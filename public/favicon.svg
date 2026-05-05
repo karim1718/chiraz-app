@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Chiraz tab mark: minimal C on brand black; full wordmark stays in UI only. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Chiraz">
+  <rect width="32" height="32" rx="7" fill="#0a0a0a"/>
+  <!-- Cubic C, legible at 16px; background matches index.css brand black. -->
+  <path
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="3.15"
+    stroke-linecap="round"
+    d="M 21.5 9.5 C 8.5 9.5 8.5 22.5 21.5 22.5"
+  />
+</svg>

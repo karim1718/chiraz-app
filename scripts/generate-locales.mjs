@@ -1,0 +1,556 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import {
+  localizeEnglish,
+  localizeArabic,
+  FAQ_EN,
+  FAQ_AR,
+} from './localize-en-ar.mjs';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const root = path.join(__dirname, '..');
+const localesDir = path.join(root, 'src', 'locales');
+fs.mkdirSync(localesDir, { recursive: true });
+
+const FAQ_FR = {
+  delivery: {
+    label: 'Livraison',
+    items: [
+      { q: 'Quels sont les délais de livraison ?', a: 'La livraison standard est effectuée sous 3 à 5 jours ouvrés en Tunisie. La livraison en point relais Yalidine est possible sous 1 à 2 jours selon votre wilaya.' },
+      { q: 'Livrez-vous partout en Tunisie ?', a: 'Oui, nous livrons dans les 58 wilayas. Les délais peuvent varier selon la zone.' },
+      { q: 'Comment suivre ma commande ?', a: 'Dès l\'expédition, vous recevez un numéro de suivi par email ou SMS. Vous pouvez le saisir dans l\'onglet "Suivi commande" sur le site.' },
+      { q: 'Les frais de livraison sont-ils fixes ?', a: 'Les frais dépendent du mode choisi : livraison à domicile (500 TND) ou point relais (350 TND). Ils sont indiqués avant validation.' },
+      { q: 'Puis-je modifier l\'adresse après commande ?', a: 'Oui, tant que la commande n\'a pas été expédiée. Contactez-nous par email ou WhatsApp avec votre numéro de commande.' },
+    ],
+  },
+  sizes: {
+    label: 'Tailles',
+    items: [
+      { q: 'Comment choisir ma pointure ?', a: 'Nos chaussures taillent en général normalement. Consultez le guide des tailles sur chaque fiche produit. En cas de doute entre deux tailles, nous conseillons de prendre la taille au-dessus.' },
+      { q: 'Où trouver le guide des tailles ?', a: 'Un lien "Guide des tailles" est disponible sur chaque fiche produit. Il affiche les correspondances EU, UK, US et CM.' },
+      { q: 'Les tailles sont-elles identiques pour chaussures et sandales ?', a: 'Non. Les grilles peuvent varier. Référez-vous au guide indiqué sur la fiche du produit concerné.' },
+      { q: 'Puis-je échanger pour une autre taille ?', a: 'Oui, dans le cadre de notre politique de retours (30 jours, article non porté). Consultez la page Retours pour la procédure.' },
+      { q: 'Que faire si ma taille n\'est pas en stock ?', a: 'Vous pouvez nous contacter pour être notifié du réassort, ou choisir un modèle similaire disponible dans votre taille.' },
+    ],
+  },
+  returns: {
+    label: 'Retours',
+    items: [
+      { q: 'Quel est le délai pour retourner un article ?', a: 'Vous disposez de 30 jours à réception pour demander un retour ou un échange, dans le respect des conditions (article non porté, emballage d\'origine).' },
+      { q: 'Qui paie les frais de retour ?', a: 'Les frais de retour sont à la charge du client, sauf en cas de défaut ou d\'erreur de notre part (mauvais article, taille, etc.).' },
+      { q: 'Comment initier un retour ?', a: 'Contactez-nous à returns@chiraz.tn avec votre numéro de commande ou par WhatsApp. Nous vous enverrons l\'étiquette et les instructions.' },
+      { q: 'Sous quelle forme est le remboursement ?', a: 'Le remboursement est effectué sur le moyen de paiement utilisé, sous 7 à 14 jours après réception et contrôle du retour.' },
+      { q: 'Puis-je échanger contre un autre modèle ?', a: 'Oui. Indiquez-nous le nouveau modèle et la taille souhaitée. Si un complément est dû, nous vous en informons.' },
+    ],
+  },
+  payment: {
+    label: 'Paiement',
+    items: [
+      { q: 'Quels moyens de paiement acceptez-vous ?', a: 'Nous acceptons le paiement à la livraison (espèces ou CCP), le virement et les cartes prépayées selon les options affichées au checkout.' },
+      { q: 'Le paiement est-il sécurisé ?', a: 'Oui. Les données de paiement en ligne sont traitées par des prestataires sécurisés. Nous ne stockons pas vos coordonnées bancaires.' },
+      { q: 'Puis-je payer en plusieurs fois ?', a: 'Des options de paiement en plusieurs fois peuvent être proposées selon les campagnes en cours. Vérifiez au moment de la commande.' },
+      { q: 'Facture-t-on la TVA ?', a: 'Les prix indiqués sont TTC. Une facture vous est envoyée avec la commande ou sur demande.' },
+      { q: 'Que faire en cas de litige de paiement ?', a: 'Contactez-nous avec votre numéro de commande et la description du problème. Nous traitons chaque cas sous 48 h ouvrées.' },
+    ],
+  },
+  products: {
+    label: 'Produits',
+    items: [
+      { q: 'D\'où viennent vos cuirs ?', a: 'Nous sélectionnons des cuirs de tanneries reconnues, dont une part de cuirs d\'origine. La matière est indiquée sur chaque fiche produit.' },
+      { q: 'Comment entretenir mes chaussures ?', a: 'Utilisez un chiffon doux et des produits d\'entretien cuir adaptés. Évitez l\'eau en excès. Les conseils détaillés figurent sur la fiche produit.' },
+      { q: 'Proposez-vous des modèles sur mesure ?', a: 'Pour l\'instant nous ne proposons pas de sur-mesure. Notre gamme couvre les pointures courantes avec un confort soigné.' },
+      { q: 'Les couleurs des photos sont-elles fidèles ?', a: 'Nous faisons tout pour que les photos reflètent les couleurs réelles. Un écran peut toutefois modifier la perception.' },
+      { q: 'Que signifie "cuir pleine fleur" ?', a: 'Le cuir pleine fleur est la couche supérieure du cuir, non corrigée. Il est plus résistant et plus noble qu\'un cuir corrigé.' },
+    ],
+  },
+};
+
+const baseFr = {
+  languageSwitcher: { aria: 'Choisir la langue' },
+  common: {
+    close: 'Fermer',
+    openMenu: 'Ouvrir le menu',
+    closeMenu: 'Fermer le menu',
+    search: 'Rechercher',
+    home: 'Accueil',
+    shop: 'Shop',
+    about: 'À propos',
+    contact: 'Contact',
+    faq: 'FAQ',
+    legal: 'Mentions légales',
+    privacy: 'Politique de confidentialité',
+    loading: 'Chargement...',
+    scrollLeft: 'Défiler vers la gauche',
+    scrollRight: 'Défiler vers la droite',
+    slide: 'Diapositive',
+    previous: 'Précédent',
+    next: 'Suivant',
+    copyLink: 'Copier le lien',
+    share: 'Partager',
+    catalog: 'Catalogue',
+    backToCatalog: 'Retour au catalogue',
+    new: 'Nouveau',
+    saleUpTo: "Jusqu'à -{{percent}}%",
+    sale: 'Soldes -{{percent}}%',
+    quickView: 'Aperçu rapide',
+    favorites: 'Favoris',
+    fromPrice: 'À partir de {{price}}',
+    color: 'Couleur',
+    size: 'Taille',
+    material: 'Matière',
+    price: 'Prix ({{code}})',
+    filterClose: 'Fermer les filtres',
+    results_one: '{{count}} résultat',
+    results_other: '{{count}} résultats',
+    resetFilters: 'Réinitialiser les filtres',
+    allLoaded: 'Tous les produits ont été chargés',
+    noMatch: 'Aucun produit ne correspond à vos critères.',
+    sortBy: 'Trier par',
+    sort: 'Trier',
+    filters: 'Filtres',
+    categories: 'Catégories',
+    account: 'Compte',
+    myAccount: 'Mon compte',
+    myOrders: 'Mes commandes',
+    whatsapp: 'WhatsApp',
+    searchLabel: 'Recherche',
+    mainNav: 'Navigation principale',
+    collectionShoes: 'Collection Chaussures',
+    collectionSandals: 'Collection Sandales',
+    newArrivals: 'Nouveautés',
+    promos: 'Promotions',
+    contactSection: 'Contact',
+    email: 'Email',
+    phone: 'Téléphone',
+    address: 'Adresse',
+    orderRef: 'N° {{id}}',
+    needHelp: "Besoin d'aide ?",
+    contactWhatsapp: 'Contacter sur WhatsApp',
+    backHome: "Retour à l'accueil",
+    logo: 'Chiraz',
+    logoChiraz: 'CHIRAZ Logo',
+  },
+  nav: { shoes: 'CHAUSSURES', sandals: 'SANDALES' },
+  header: { categoriesAria: 'Catégories', actionsAria: 'Actions' },
+  footer: {
+    brand:
+      'Chaussures premium, artisanat et élégance. Pour celles et ceux qui ne transigent pas avec la qualité.',
+    navigation: 'Navigation',
+    help: 'Aide',
+    directContact: 'Contact direct',
+    instagram: 'Instagram',
+    facebook: 'Facebook',
+    tiktok: 'TikTok',
+    rights: '© {{year}} Chiraz',
+    helpFaq: 'FAQ',
+    helpReturns: 'Politique retour',
+    helpSize: 'Guide tailles',
+    helpTrack: 'Suivi commande',
+    home: 'Accueil',
+    about: 'À Propos',
+    contact: 'Contact',
+    shop: 'Shop',
+  },
+  bottomNav: { aria: 'Navigation principale' },
+  mobileNav: {
+    backHome: "Retour à l'accueil",
+    mainNav: 'Navigation principale',
+    categories: 'Catégories',
+  },
+  meta: {
+    home: {
+      title: 'Chiraz — Chaussures premium',
+      description: 'Chaussures premium, artisanat et élégance.',
+    },
+    shop: {
+      title: 'Catalogue — Chiraz',
+      description: 'Découvrez nos collections Homme et Femme.',
+    },
+    about: {
+      title: 'À propos — Chiraz',
+      description: 'Notre histoire, nos valeurs et notre savoir-faire.',
+    },
+    contact: {
+      title: 'Contact — Chiraz',
+      description: 'Contactez-nous par formulaire ou WhatsApp.',
+    },
+    faq: {
+      title: 'FAQ — Chiraz',
+      description: 'Questions fréquentes livraison, tailles, retours.',
+    },
+    returns: {
+      title: 'Politique de retour — Chiraz',
+      description: 'Conditions et procédure de retour.',
+    },
+    checkout: {
+      title: 'Commander — Chiraz',
+      description: 'Finalisez votre commande.',
+    },
+    confirmation: {
+      title: 'Commande envoyée — Chiraz',
+      description: 'Votre commande a bien été enregistrée.',
+    },
+    legal: {
+      title: 'Mentions légales — Chiraz',
+      description: 'Mentions légales du site Chiraz.',
+    },
+    privacy: {
+      title: 'Confidentialité — Chiraz',
+      description: 'Politique de confidentialité.',
+    },
+    product: { title: 'Produit — Chiraz', description: 'Détail produit Chiraz.' },
+    defaultTitle: 'Chiraz — Chaussures premium',
+  },
+  hero: {
+    title: "L'Élégance. Redéfinie.",
+    subtitle: 'Découvrez le luxe au quotidien avec <chiraz>CHIRAZ</chiraz>.',
+    ctaShoes: 'COLLECTION CHAUSSURES',
+    ctaSandals: 'COLLECTION SANDALES',
+  },
+  collections: {
+    title: 'Nos Collections',
+    discover: 'Découvrir',
+    colShoes: 'Collection Chaussures',
+    colSandals: 'Collection Sandales',
+  },
+  productCarousel: {
+    title: 'Nos Favoris',
+    subtitle: '',
+    cta: 'Aperçu Rapide',
+    twoColors: 'Disponible en 2 couleurs',
+    p1: { name: 'Sneaker Urbain Noir' },
+    p2: { name: 'Baskets Essentielles Beige' },
+    p3: { name: 'Slip-On Élégant Rose' },
+    p4: { name: 'Sneaker Monochrome' },
+    p5: { name: 'Baskets Minimalistes' },
+    p6: { name: 'Confort Absolu' },
+  },
+  material: {
+    alt: 'Détails des matériaux Premium',
+    h2a: 'Matériaux Premium.',
+    h2b: 'Zéro Compromis.',
+    p:
+      "Chez CHIRAZ, chaque chaussure est conçue avec des matériaux choisis méticuleusement. Découvrez l'équilibre parfait entre respirabilité, durabilité et une sensation de douceur absolue au quotidien.",
+    f1t: 'Confort Nuage',
+    f1d: 'Nos semelles signatures épousent parfaitement votre pied, offrant un soutien invisible.',
+    f2t: 'Tissu Ultra-Respirant',
+    f2d:
+      "Garde vos pieds frais et légers tout au long de la journée, sans sacrifier l'élégance.",
+    cta: 'DÉCOUVRIR NOS MATÉRIAUX',
+  },
+  testimonials: {
+    title: 'Ils nous font confiance',
+    subtitle: 'Avis de client(e)s en Tunisie — retours authentiques après commande.',
+    t1: {
+      name: 'Salma K.',
+      city: 'Tunis',
+      text:
+        'Deuxième commande et toujours aussi contente. Les escarpins sont solides et élégants — parfaits pour le boulot au centre-ville.',
+    },
+    t2: {
+      name: 'Mehdi R.',
+      city: 'Sfax',
+      text:
+        "Cuir sérieux pour un prix correct. Les richelieus sont nickels, livraison jusqu'à Sfax sans histoire.",
+    },
+    t3: {
+      name: 'Lina B.',
+      city: 'Sousse',
+      text:
+        'Colis bien protégé, ballerines confortables dès le premier jour. Je recommande aux copines du bord de mer.',
+    },
+    t4: {
+      name: 'Amine B.',
+      city: 'La Marsa',
+      text:
+        "Service client réactif sur WhatsApp. J'ai changé ma pointure sans prise de tête. Très satisfait.",
+    },
+    t5: {
+      name: 'Nour D.',
+      city: 'Nabeul',
+      text:
+        "J'ai pris des derbies pour mon mari : il ne les quitte plus. Finition propre, ça se voit que c'est du bon travail.",
+    },
+    t6: {
+      name: 'Firas K.',
+      city: 'Bizerte',
+      text:
+        'Excellent rapport qualité-prix. Les baskets sont soignées, idéales pour le week-end — livraison rapide vers Bizerte.',
+    },
+  },
+  whatsappFloat: { aria: 'Contacter sur WhatsApp', tooltip: "Besoin d'aide ?" },
+  catalog: {
+    title: 'Catalogue',
+    sortNew: 'Nouveautés',
+    sortPriceAsc: 'Prix croissant',
+    sortPriceDesc: 'Prix décroissant',
+    sortPopular: 'Popularité',
+    selectSize: 'Sélectionnez votre pointure :',
+    buyNow: 'Acheter maintenant',
+    seeFull: 'Voir le produit complet',
+    chaussures: 'Chaussures',
+    sandales: 'Sandales',
+    apply_one: 'Appliquer ({{count}} résultat)',
+    apply_other: 'Appliquer ({{count}} résultats)',
+    badgeNewDb: 'Nouveau',
+    saleUpToBadge: "Jusqu'à -{{percent}}%",
+    salePercent: 'Soldes -{{percent}}%',
+    favoriteAria: 'Favoris',
+    quickViewAria: 'Aperçu rapide',
+    filtersMobile: 'Filtres',
+    sortMobile: 'Trier',
+    sortSheetTitle: 'Trier par',
+    loadedAll: 'Tous les produits ont été chargés',
+  },
+  productDetail: {
+    notFound: 'Produit introuvable.',
+    backCatalog: '← Catalogue',
+    guideTitle: 'Guide des tailles',
+    sizeEu: 'EU',
+    sizeUk: 'UK',
+    sizeUs: 'US',
+    sizeCm: 'CM',
+    similar: 'Vous aimerez aussi',
+    buyNow: 'Acheter maintenant',
+    selectSizeCta: 'Sélectionnez une pointure',
+    waOrder: 'Commander sur WhatsApp',
+    buyBar: 'Acheter',
+    accDesc: 'Description',
+    accMat: 'Matières & Fabrication',
+    accCare: 'Entretien',
+    accShip: 'Livraison & Retours',
+    accDescBody:
+      'Chaussure premium {{name}}, alliant confort et élégance. Coupe soignée et matériaux sélectionnés pour une tenue durable au quotidien.',
+    accMatBody: '{{material}}. Fabrication soignée pour une finition luxueuse et un entretien facilité.',
+    accCareBody:
+      "Nettoyer avec un chiffon doux et humide. Éviter l'eau en excès. Utiliser des produits d'entretien cuir adaptés pour préserver la matière.",
+    accShipBody:
+      'Livraison standard offerte en France sous 3 à 5 jours. Retours gratuits sous 30 jours pour les articles non portés. Consultez notre page Retours pour plus de détails.',
+    shareSuffix: ' | Chiraz',
+    waIntro: "Bonjour, je souhaite commander l'article suivant :",
+    waProduct: 'Produit',
+    waSize: 'Pointure',
+    waColor: 'Couleur',
+    waPrice: 'Prix',
+    waUnspecified: 'Non spécifié',
+    imageNum: 'Image {{n}}',
+  },
+  quickOrder: {
+    title: 'Achat Rapide',
+    sizeLabel: 'Pointure : {{size}}',
+    notSelected: 'Non sélectionné',
+    perUnit: "{{price}} l'unité",
+    summary: 'Résumé de commande',
+    subtotal: 'Sous-total produits',
+    delivery: 'Livraison',
+    deliveryFree: 'Livraison (non facturée)',
+    total: 'Total',
+    fullName: 'Nom complet',
+    phone: 'Téléphone',
+    city: 'Ville',
+    deliveryFee: 'Frais de livraison',
+    deliveryHint: 'Montant ajouté au total (modifiable pour cette commande).',
+    deliveryAdmin: 'Livraison offerte ou non facturée sur la boutique (réglage admin).',
+    confirm: 'Confirmer ma commande',
+    wa: 'Commander sur WhatsApp',
+    errSize: 'Veuillez sélectionner une pointure.',
+    errGeneric: 'Une erreur inattendue est survenue.',
+    waLineProduct: 'Produit',
+    waLineSize: 'Pointure',
+    waLineColor: 'Couleur',
+    waLineUnit: 'Prix unitaire',
+    waLineSub: 'Sous-total',
+    waLineShip: 'Livraison',
+    waLineTotal: 'Total',
+    waLineName: 'Nom',
+    waLineTel: 'Tel',
+    waLineCity: 'Ville',
+    waIntro: "Bonjour, je souhaite commander l'article suivant :",
+  },
+  search: {
+    placeholder: 'Rechercher une chaussure...',
+    aria: 'Recherche',
+    clear: 'Effacer',
+    trends: 'Tendances',
+    popular: 'Recherches populaires',
+    resultsFor_one: '{{count}} résultat pour «{{query}}»',
+    resultsFor_other: '{{count}} résultats pour «{{query}}»',
+    empty: 'Aucun résultat pour «{{query}}»',
+    emptyHint: 'Essayez : Derby, Oxford, Chelsea, Escarpin, Cuir...',
+    tagDerby: 'Derby',
+    tagOxford: 'Oxford',
+    tagCuir: 'Cuir',
+    tagNew: 'Nouvelle collection',
+    tagChelsea: 'Chelsea',
+    tagEscarpin: 'Escarpin',
+    tagBallerine: 'Ballerine',
+    tagSneaker: 'Sneaker',
+  },
+  contact: {
+    title: 'Contact',
+    lead: 'Une question, un projet ? Nous sommes à votre écoute.',
+    name: 'Nom',
+    email: 'Email',
+    subject: 'Sujet',
+    message: 'Message',
+    placeholderName: 'Votre nom',
+    placeholderEmail: 'vous@exemple.com',
+    chooseSubject: 'Choisir un sujet',
+    placeholderMessage: 'Votre message...',
+    send: 'Envoyer',
+    sending: 'Envoi...',
+    sent: 'Message envoyé. Nous vous répondrons dès que possible.',
+    emailDisabled:
+      'Envoi email désactivé : ajoutez VITE_EMAILJS_SERVICE_ID, VITE_EMAILJS_TEMPLATE_ID et VITE_EMAILJS_PUBLIC_KEY dans un fichier .env à la racine du projet, puis redémarrez npm run dev.',
+    sendFailed:
+      "L'envoi a échoué. Vérifiez la console (F12), vos identifiants EmailJS et que les noms des variables du modèle correspondent (from_name, from_email, subject, message).",
+    waCta: 'Nous écrire sur WhatsApp',
+    subjects: [
+      'Question sur une commande',
+      'Question produit',
+      'Retour / Échange',
+      'Partenariat',
+      'Autre',
+    ],
+    addressLine: '123 Avenue de la République, tunisie',
+  },
+  confirmation: {
+    title: 'Votre commande a bien été envoyée',
+    subtitle: 'Commande envoyée ! On vous contacte sous 2h 🎉',
+    orderNo: 'N° {{id}}',
+    home: "Retour à l'accueil",
+  },
+  about: {
+    heroKicker: 'Chiraz · depuis 1978',
+    heroTitle: 'Notre Histoire',
+    heroLead: "L'excellence du savoir-faire tunisien",
+    storyTitle: 'Notre Histoire',
+    storySub: 'Une maison tunisienne · 1978 → aujourd’hui',
+    storyP1:
+      "Chiraz, depuis 1978, incarne l'excellence du savoir-faire tunisien : des ateliers où le cuir est coupé, assemblé et fini avec exigence, pour des chaussures premium accessibles. Notre histoire est celle d'une passion durable — de génération en génération — au service du beau et du bien fait.",
+    storyP2:
+      "Disponible partout en Tunisie, nous relions l'atelier au client final : vente en ligne pour commander simplement, et vente en gros pour les partenaires qui partagent nos standards. Chaque modèle porte cette promesse : qualité authentique, élégance contemporaine, et respect de celles et ceux qui nous font confiance.",
+    valuesTitle: 'Nos Valeurs',
+    countersTitle: 'Depuis 1978',
+    countersClients: 'Clients satisfaits',
+    countersLeather: 'Cuir véritable',
+    v1t: 'Savoir-faire',
+    v1d:
+      "Chaque paire est conçue avec des techniques d'artisanat transmises et un contrôle qualité exigeant, de la coupe du cuir à la finition.",
+    v2t: 'Durabilité',
+    v2d:
+      'Nous privilégions des matériaux durables et des processus responsables pour une chaussure qui traverse le temps.',
+    v3t: 'Élégance',
+    v3d:
+      'Lignes épurées et détails soignés : une esthétique contemporaine ancrée dans une tradition de raffinement.',
+    e1t: "L'excellence du savoir-faire tunisien",
+    e1d:
+      "Des techniques d'artisanat transmises et un contrôle qualité exigeant, fièrement ancrés en Tunisie.",
+    e2t: 'Disponible partout en Tunisie',
+    e2d:
+      'Livraison et présence pensées pour toucher les client(e)s du nord au sud du pays.',
+    e3t: 'Vente en ligne & en gros',
+    e3d:
+      'Commandez sur la boutique en ligne ou travaillez avec nous en volume pour vos besoins professionnels.',
+    e4t: "De l'atelier au client final",
+    e4d:
+      "Une chaîne maîtrisée : coupe, montage, finition — jusqu'à la paire qui vous accompagne au quotidien.",
+  },
+  returns: {
+    title: 'Politique de retour',
+    updated: 'Dernière mise à jour : janvier 2026',
+    tocMobile: 'Aller à la section',
+    tocPlaceholder: 'Aller à la section...',
+    tocSidebar: 'Sommaire',
+    s1h: 'Conditions générales',
+    s2h: 'Délais de retour',
+    s3h: 'Procédure',
+    s4h: 'Remboursements',
+    s5h: 'Exceptions',
+    s1p1:
+      "Chiraz vous permet de retourner ou d'échanger tout article commandé sur chiraz.tn dans le respect des conditions ci-dessous. Les articles doivent être renvoyés dans leur état d'origine, non portés, non lavés et dans leur emballage d'origine lorsque cela est possible.",
+    s1p2:
+      "Sont exclus des retours les articles personnalisés ou marqués comme « soldes – non repris » au moment de l'achat, sauf en cas de vice ou d'erreur de notre part.",
+    s2p:
+      "Vous disposez de 30 jours calendaires à compter de la date de réception de votre colis pour nous notifier votre souhait de retour ou d'échange. Passé ce délai, aucune demande de retour ne pourra être acceptée.",
+    s3intro: 'Pour initier un retour ou un échange :',
+    s3li1:
+      'Contactez-nous par email à returns@chiraz.tn en indiquant votre numéro de commande et les articles concernés.',
+    s3li2:
+      'Nous vous transmettons les instructions et, le cas échéant, une étiquette de retour.',
+    s3li3:
+      'Emballez soigneusement le(s) article(s) et déposez le colis au point relais ou au transporteur indiqué.',
+    s3li4:
+      "Conservez la preuve d'envoi jusqu'à réception de la confirmation de remboursement ou de l'envoi de l'échange.",
+    s3p2:
+      "Les frais de renvoi sont à la charge du client, sauf en cas de produit défectueux ou d'erreur de notre part (mauvais article, taille, etc.).",
+    s4p1:
+      'Dès réception et contrôle du retour, le remboursement est effectué sous 7 à 14 jours sur le moyen de paiement utilisé lors de la commande. Les frais de livraison initiaux ne sont pas remboursés sauf si le retour est dû à une erreur ou un défaut de notre part.',
+    s4p2:
+      "En cas d'échange, un nouvel article vous est expédié dès validation. Si le montant du nouvel article est supérieur, un complément vous sera demandé ; s'il est inférieur, la différence vous sera remboursée.",
+    s5p1:
+      "Nous nous réservons le droit de refuser un retour si l'article ne respecte pas les conditions (état, emballage, délai). En cas de produit endommagé ou non conforme à la commande, contactez-nous immédiatement avec des photos ; nous prendrons en charge le retour et le renvoi ou le remboursement.",
+    s5p2: 'Pour toute question : returns@chiraz.tn ou via le formulaire de contact.',
+    contactLink: 'Nous contacter',
+  },
+  legal: {
+    title: 'Mentions légales',
+    updated: 'Dernière mise à jour : janvier 2026',
+    editor: 'Éditeur',
+    editorBody:
+      'Le site chiraz.tn est édité par Chiraz. Siège : Sfax, en Tunisie, situé au 51 Av. 5 août, Sfax 3002 .',
+    hosting: 'Hébergement',
+    hostingBody:
+      "L'hébergement du site est assuré par un prestataire technique. Pour toute question relative à l'accès ou au fonctionnement du site, vous pouvez nous contacter à contact@chiraz.tn.",
+    ip: 'Propriété intellectuelle',
+    ipBody:
+      "L'ensemble des contenus (textes, images, logos, visuels) présents sur le site est protégé par le droit d'auteur et le droit des marques. Toute reproduction ou utilisation non autorisée est interdite.",
+    contact: 'Contact',
+    contactBody: 'Pour toute question concernant les mentions légales : contact@chiraz.tn.',
+  },
+  privacy: {
+    title: 'Politique de confidentialité',
+    updated: 'Dernière mise à jour : janvier 2026',
+    collected: 'Données collectées',
+    collectedBody:
+      "Dans le cadre de l'utilisation du site et de la passation de commandes, nous sommes susceptibles de collecter vos nom, prénom, adresse email, adresse postale, numéro de téléphone et informations relatives à vos commandes. Ces données sont nécessaires au traitement des commandes et à la relation client.",
+    use: 'Utilisation',
+    useBody:
+      "Les données collectées sont utilisées pour la gestion des commandes, la livraison, le suivi client et, avec votre accord, l'envoi de communications commerciales (newsletter, offres). Elles ne sont pas cédées à des tiers à des fins commerciales.",
+    rights: 'Vos droits',
+    rightsBody:
+      "Vous disposez d'un droit d'accès, de rectification, de suppression et d'opposition concernant vos données personnelles. Pour exercer ces droits ou pour toute question : contact@chiraz.tn.",
+    security: 'Sécurité',
+    securityBody:
+      'Nous mettons en œuvre des mesures techniques et organisationnelles pour protéger vos données contre tout accès non autorisé, perte ou altération.',
+  },
+  currency: { long: 'Dinar tunisien' },
+  faq: {
+    title: 'FAQ',
+    categories: FAQ_FR,
+  },
+};
+
+function deepClone(o) {
+  return JSON.parse(JSON.stringify(o));
+}
+
+const fr = deepClone(baseFr);
+
+const en = deepClone(baseFr);
+localizeEnglish(en);
+en.faq.categories = FAQ_EN;
+
+const ar = deepClone(baseFr);
+localizeArabic(ar);
+ar.faq.categories = FAQ_AR;
+
+function write(name, data) {
+  fs.writeFileSync(path.join(localesDir, name), JSON.stringify(data, null, 2) + '\n');
+}
+
+write('fr.json', fr);
+write('en.json', en);
+write('ar.json', ar);
+console.log('Wrote fr/en/ar to', localesDir);
