@@ -802,7 +802,7 @@ export default function CatalogPage() {
 
         {/* Main: sort + grid */}
         <div className="flex-1 min-w-0">
-          <div className="sticky top-20 sm:top-24 z-10 bg-[#0a0a0a]/95 backdrop-blur py-2 -mx-4 px-4 md:mx-0 md:px-0 md:relative md:top-0 md:bg-transparent md:backdrop-blur-none">
+          <div className="relative z-10 bg-[#0a0a0a]/95 backdrop-blur py-2 -mx-4 px-4 md:mx-0 md:px-0 md:bg-transparent md:backdrop-blur-none">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-8">
               <h1 className="font-serif text-2xl sm:text-3xl md:text-4xl text-[#E4E1D5]">{t('catalog.title')}</h1>
               <div className="flex items-center gap-3">

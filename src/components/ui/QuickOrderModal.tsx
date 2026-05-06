@@ -252,35 +252,6 @@ export default function QuickOrderModal({ isOpen, onClose, product, selectedSize
                   />
                 </div>
 
-                {shippingEnabled ? (
-                  <div>
-                    <label
-                      htmlFor="deliveryFee"
-                      className="mb-2 flex items-center gap-2 text-sm text-[#E4E1D5]/80"
-                    >
-                      <Truck size={16} className="text-[#E4E1D5]/50" aria-hidden />
-                      {t('quickOrder.deliveryFee')}
-                    </label>
-                    <input
-                      id="deliveryFee"
-                      type="number"
-                      inputMode="decimal"
-                      min={0}
-                      step="0.01"
-                      value={deliveryFeeInput}
-                      onChange={(e) => setDeliveryFeeInput(e.target.value)}
-                      className="w-full bg-[#E4E1D5]/5 border border-[#E4E1D5]/20 rounded-xl px-4 min-h-[48px] text-[#E4E1D5] focus:outline-none focus:border-[#E4E1D5] transition-colors"
-                    />
-                    <p className="mt-1.5 text-xs text-[#E4E1D5]/45">
-                      {t('quickOrder.deliveryHint')}
-                    </p>
-                  </div>
-                ) : (
-                  <p className="rounded-xl border border-[#E4E1D5]/10 bg-[#E4E1D5]/5 px-3 py-2 text-xs text-[#E4E1D5]/55">
-                    {t('quickOrder.deliveryAdmin')}
-                  </p>
-                )}
-
                 <div className="mt-8 pt-4 space-y-3">
                   <button
                     type="submit"
