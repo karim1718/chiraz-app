@@ -8,6 +8,7 @@ import { useWindowSize } from '../hooks';
 const ImageSequenceCanvas = ({ bgScale, isMobile }: { bgScale: number | MotionValue<number>; isMobile: boolean }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [images, setImages] = useState<HTMLImageElement[]>([]);
+  const [hasSequence, setHasSequence] = useState<boolean | null>(null);
 
   // Charger toutes les photos du dossier (sans sauter de frame)
   useEffect(() => {
@@ -19,7 +20,8 @@ const ImageSequenceCanvas = ({ bgScale, isMobile }: { bgScale: number | MotionVa
       if (!isMounted) return;
       const img = new Image();
       const frameNum = String(index).padStart(3, '0');
-      img.src = `/photos/Penny_loafer_on_marble_slab_243e7581b3 (1)_${frameNum}.jpg`;
+      const fileName = `Penny_loafer_on_marble_slab_243e7581b3 (1)_${frameNum}.jpg`;
+      img.src = `/photos/${encodeURIComponent(fileName)}`;
 
       img.onload = () => {
         if (!isMounted) return;
@@ -29,7 +31,13 @@ const ImageSequenceCanvas = ({ bgScale, isMobile }: { bgScale: number | MotionVa
       };
 
       img.onerror = () => {
-        if (isMounted && loadedImages.length > 0) setImages(loadedImages);
+        if (!isMounted) return;
+        if (loadedImages.length > 0) {
+          setImages(loadedImages);
+          setHasSequence(true);
+          return;
+        }
+        setHasSequence(false);
       };
     };
 
@@ -39,6 +47,7 @@ const ImageSequenceCanvas = ({ bgScale, isMobile }: { bgScale: number | MotionVa
 
   useEffect(() => {
     if (images.length === 0) return;
+    setHasSequence(true);
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -105,7 +114,17 @@ const ImageSequenceCanvas = ({ bgScale, isMobile }: { bgScale: number | MotionVa
       animate={{ scale: 1 }}
       transition={{ duration: 2.5, ease: 'easeOut' }}
     >
-      <canvas ref={canvasRef} className="w-full h-full block" />
+      {hasSequence === false ? (
+        <div
+          className="w-full h-full"
+          style={{
+            background:
+              'radial-gradient(circle at 30% 20%, rgba(228,225,213,0.12), transparent 45%), radial-gradient(circle at 70% 80%, rgba(228,225,213,0.08), transparent 50%), #000',
+          }}
+        />
+      ) : (
+        <canvas ref={canvasRef} className="w-full h-full block" />
+      )}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
     </motion.div>
   );
