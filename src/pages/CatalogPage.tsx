@@ -142,10 +142,10 @@ function ProductCard({
             transition={{ duration: 0.4 }}
             style={{ touchAction: 'manipulation' }}
           >
-            {(getPrimaryImageForColor(product, product.colors[0]) || product.images[0]) ? (
+            {getPrimaryImageForColor(product, product.colors[0]) ? (
               <>
                 <img
-                  src={getPrimaryImageForColor(product, product.colors[0]) || product.images[0]}
+                  src={getPrimaryImageForColor(product, product.colors[0])}
                   alt={product.name}
                   className="w-full h-full object-cover mix-blend-multiply"
                   onError={(e) => {
@@ -318,9 +318,9 @@ function QuickViewModal({
           </button>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="aspect-[4/3] bg-[#1a1a1a] rounded overflow-hidden">
-              {(getPrimaryImageForColor(product, selectedColor) || product.images[0]) ? (
+              {getPrimaryImageForColor(product, selectedColor) ? (
                 <img
-                  src={getPrimaryImageForColor(product, selectedColor) || product.images[0]}
+                  src={getPrimaryImageForColor(product, selectedColor)}
                   alt={product.name}
                   className="w-full h-full object-cover"
                 />

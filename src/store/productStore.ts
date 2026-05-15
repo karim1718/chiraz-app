@@ -12,6 +12,8 @@ interface ProductState {
   getProductById: (id: string) => Product | undefined;
   getProductsByCategory: (category: string) => Product[];
   getSimilarProducts: (excludeId: string, category: string, limit?: number) => Product[];
+  /** Produits marqués vedette (page d'accueil), triés par nom. */
+  getFeaturedProducts: () => Product[];
 }
 
 export const useProductStore = create<ProductState>((set, get) => ({
@@ -116,6 +118,11 @@ export const useProductStore = create<ProductState>((set, get) => ({
             a.localeCompare(b, 'fr'),
           ),
           sizes: Array.from(sizesSet).sort((a, b) => a - b),
+          description: typeof p.description === 'string' ? p.description : undefined,
+          original_price: p.original_price ?? undefined,
+          gender: p.gender ?? undefined,
+          is_active: p.is_active ?? undefined,
+          is_featured: p.is_featured ?? undefined,
         };
       });
 
@@ -137,5 +144,11 @@ export const useProductStore = create<ProductState>((set, get) => ({
 
   getSimilarProducts: (excludeId: string, category: string, limit = 4) => {
     return get().products.filter(p => p.id !== excludeId && p.category === category).slice(0, limit);
-  }
+  },
+
+  getFeaturedProducts: () => {
+    return get()
+      .products.filter((p) => p.is_featured === true)
+      .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  },
 }));

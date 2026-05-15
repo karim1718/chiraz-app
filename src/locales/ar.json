@@ -161,26 +161,9 @@
   "productCarousel": {
     "title": "مفضلاتنا",
     "subtitle": "",
-    "cta": "معاينة سريعة",
-    "twoColors": "متوفر بلونين",
-    "p1": {
-      "name": "سنيكر أسود حضري"
-    },
-    "p2": {
-      "name": "حذاء رياضي بيج أساسي"
-    },
-    "p3": {
-      "name": "سلِب أون أنيق وردي"
-    },
-    "p4": {
-      "name": "سنيكر أحادي اللون"
-    },
-    "p5": {
-      "name": "حذاء رياضي بسيط"
-    },
-    "p6": {
-      "name": "راحة مطلقة"
-    }
+    "cta": "عرض",
+    "colorsCountOne": "متوفر بلون واحد",
+    "colorsCount": "متوفر بـ {{count}} ألوان"
   },
   "material": {
     "alt": "تفاصيل المواد الفاخرة",
@@ -267,6 +250,7 @@
     "selectSizeCta": "اختر مقاسًا",
     "waOrder": "اطلب عبر واتساب",
     "buyBar": "اشترِ",
+    "storeDescriptionLabel": "الوصف",
     "accDesc": "الوصف",
     "accMat": "المواد والتصنيع",
     "accCare": "العناية",
@@ -282,7 +266,17 @@
     "waColor": "اللون",
     "waPrice": "السعر",
     "waUnspecified": "غير محدد",
-    "imageNum": "صورة {{n}}"
+    "imageNum": "صورة {{n}}",
+    "galleryFullscreen": "ملء الشاشة",
+    "galleryClose": "إغلاق",
+    "galleryPlay": "تشغيل العرض التلقائي",
+    "galleryPause": "إيقاف العرض",
+    "galleryPrev": "الصورة السابقة",
+    "galleryNext": "الصورة التالية",
+    "galleryZoomIn": "تكبير",
+    "galleryZoomOut": "تصغير",
+    "galleryReset": "إعادة ضبط التكبير",
+    "galleryCounter": "{{current}} / {{total}}"
   },
   "quickOrder": {
     "title": "شراء سريع",

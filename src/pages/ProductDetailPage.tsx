@@ -9,6 +9,12 @@ import {
   Minus,
   Star,
   X,
+  Pause,
+  Play,
+  Maximize2,
+  ZoomIn,
+  ZoomOut,
+  RefreshCcw,
 } from 'lucide-react';
 import type { Product } from '../types/product';
 import { useProductStore } from '../store/productStore';
@@ -23,6 +29,7 @@ import SizeChips, { ALL_SIZES } from '../components/ui/SizeChips';
 import QuickOrderModal from '../components/ui/QuickOrderModal';
 import { formatCurrencyAmount } from '../lib/vocab';
 import { useProductStock } from '../hooks/useProductStock';
+import { shopWhatsAppUrl } from '../lib/shopContact';
 
 const STAR_RATING = 4.5;
 
@@ -40,7 +47,16 @@ const SIZE_GUIDE_ROWS = [
   { eu: 46, uk: 13, us: 15, cm: 30 },
 ];
 
-// --- Zoom lens on desktop; swipeable carousel + dots on mobile ---
+const SLIDESHOW_INTERVAL_MS = 3000;
+
+/**
+ * Galerie produit avec :
+ * - zone principale **1:1** (carré) ; image en **object-contain** pour voir le fichier backend en entier (sans recadrage)
+ * - filtrage par couleur (`images` change → reset à 0)
+ * - diaporama auto 3 s, en pause au survol (desktop), en plein écran ou après action utilisateur
+ * - swipe mobile, vignettes, dots, navigation clavier
+ * - lightbox plein écran avec zoom (clic / molette / boutons), pan, navigation, fermeture Esc
+ */
 function ProductGallery({
   images,
   productName,
@@ -53,43 +69,89 @@ function ProductGallery({
   isMobile?: boolean;
 }) {
   const { t } = useTranslation();
+  /** Déduplique sans trier pour conserver l’ordre admin (1ère image = principale). */
+  const galleryImages = useMemo(() => {
+    if (!images?.length) return [''];
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const url of images) {
+      if (!url) continue;
+      if (seen.has(url)) continue;
+      seen.add(url);
+      out.push(url);
+    }
+    return out.length ? out : [''];
+  }, [images]);
+
   const [activeIndex, setActiveIndex] = useState(0);
   const [hover, setHover] = useState(false);
-  const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
+  const [autoplay, setAutoplay] = useState(true);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const galleryImages = images.length ? images : [''];
+
   const safeActiveIndex = Math.min(activeIndex, Math.max(0, galleryImages.length - 1));
   const mainSrc = galleryImages[safeActiveIndex];
-  /** Change quand la couleur (jeu d’images) ou la vignette active change → transition visible */
   const slideKey = `${galleryImages.join('|')}::${safeActiveIndex}`;
 
+  // Reset à chaque changement de couleur (jeu d’images différent)
   useEffect(() => {
     setActiveIndex(0);
-  }, [images.join('|')]);
+    setAutoplay(true);
+  }, [galleryImages.join('|')]);
 
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      const el = containerRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const x = ((e.clientX - rect.left) / rect.width) * 100;
-      const y = ((e.clientY - rect.top) / rect.height) * 100;
-      setZoomPos({ x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) });
-    },
-    []
-  );
+  // Diaporama auto
+  useEffect(() => {
+    if (!autoplay || lightboxOpen || hover) return;
+    if (galleryImages.length < 2) return;
+    if (!mainSrc) return;
+    const id = window.setInterval(() => {
+      setActiveIndex((i) => (i + 1) % galleryImages.length);
+    }, SLIDESHOW_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, [autoplay, lightboxOpen, hover, galleryImages, mainSrc]);
+
+  const goTo = useCallback((i: number, pauseSlideshow = true) => {
+    const len = galleryImages.length;
+    if (len === 0) return;
+    const next = ((i % len) + len) % len;
+    setActiveIndex(next);
+    if (pauseSlideshow) setAutoplay(false);
+  }, [galleryImages.length]);
+
+  const goPrev = useCallback(() => goTo(safeActiveIndex - 1), [goTo, safeActiveIndex]);
+  const goNext = useCallback(() => goTo(safeActiveIndex + 1), [goTo, safeActiveIndex]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.touches[0]?.clientX ?? null);
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null) return;
+    const endX = e.changedTouches[0]?.clientX ?? touchStartX;
+    const dx = endX - touchStartX;
+    if (Math.abs(dx) > 40) {
+      if (dx < 0) goNext();
+      else goPrev();
+    }
+    setTouchStartX(null);
+  };
+
+  const hasMultiple = galleryImages.length > 1 && Boolean(mainSrc);
+  const counter = t('productDetail.galleryCounter', {
+    current: safeActiveIndex + 1,
+    total: galleryImages.length,
+  });
 
   return (
     <div className={className}>
       <div className="flex gap-4">
         <div
           ref={containerRef}
-          className={`relative flex-1 bg-[#1a1a1a] rounded-sm overflow-hidden ${
-            isMobile ? 'h-[60vw] min-h-[240px] max-h-[400px]' : 'aspect-[4/3]'
-          }`}
+          className="relative flex-1 w-full min-h-0 aspect-square bg-[#1a1a1a] rounded-sm overflow-hidden group"
           onMouseEnter={() => !isMobile && setHover(true)}
           onMouseLeave={() => setHover(false)}
-          onMouseMove={!isMobile ? handleMouseMove : undefined}
+          onTouchStart={isMobile ? handleTouchStart : undefined}
+          onTouchEnd={isMobile ? handleTouchEnd : undefined}
         >
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
@@ -101,14 +163,21 @@ function ProductGallery({
               className="absolute inset-0"
             >
               {mainSrc ? (
-                <img
-                  src={mainSrc}
-                  alt={productName}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
+                <button
+                  type="button"
+                  onClick={() => setLightboxOpen(true)}
+                  className="absolute inset-0 flex items-center justify-center w-full h-full cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E4E1D5]"
+                  aria-label={t('productDetail.galleryFullscreen')}
+                >
+                  <img
+                    src={mainSrc}
+                    alt={productName}
+                    className="max-w-full max-h-full w-auto h-auto object-contain"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </button>
               ) : (
                 <span className="flex items-center justify-center h-full text-[#E4E1D5]/40 font-serif text-lg">
                   {productName}
@@ -117,62 +186,368 @@ function ProductGallery({
             </motion.div>
           </AnimatePresence>
 
-          {/* Zoom lens preview (desktop): cadre à droite, zone sous le curseur agrandie */}
-          {hover && mainSrc && (
+          {/* Barre de progression du diaporama */}
+          {autoplay && !hover && !lightboxOpen && hasMultiple && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="hidden lg:block absolute start-full ms-4 top-0 w-[280px] h-full rounded border border-[#E4E1D5]/20 overflow-hidden bg-[#0a0a0a] z-10 pointer-events-none"
+              key={`progress-${slideKey}`}
+              initial={{ width: '0%' }}
+              animate={{ width: '100%' }}
+              transition={{ duration: SLIDESHOW_INTERVAL_MS / 1000, ease: 'linear' }}
+              className="absolute bottom-0 left-0 h-[2px] bg-[#E4E1D5]/80 z-10"
+              aria-hidden
+            />
+          )}
+
+          {/* Compteur + bouton plein écran (toujours visible mobile, hover desktop) */}
+          {mainSrc && (
+            <div
+              className={`absolute top-3 end-3 z-10 flex items-center gap-2 transition-opacity ${
+                isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+              }`}
             >
-              <div
-                className="w-full h-full bg-no-repeat"
-                style={{
-                  backgroundImage: `url(${mainSrc})`,
-                  backgroundSize: '250%',
-                  backgroundPosition: `${zoomPos.x - 20}% ${zoomPos.y - 20}%`,
-                }}
-              />
-            </motion.div>
+              {hasMultiple && (
+                <span className="rounded-full bg-black/60 backdrop-blur-sm px-2.5 py-1 text-[11px] font-medium text-[#E4E1D5] tabular-nums">
+                  {counter}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => setLightboxOpen(true)}
+                className="rounded-full bg-black/60 backdrop-blur-sm p-2 text-[#E4E1D5] hover:bg-black/80 transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
+                aria-label={t('productDetail.galleryFullscreen')}
+              >
+                <Maximize2 size={16} />
+              </button>
+            </div>
+          )}
+
+          {/* Play / Pause */}
+          {hasMultiple && (
+            <button
+              type="button"
+              onClick={() => setAutoplay((p) => !p)}
+              className={`absolute bottom-3 end-3 z-10 rounded-full bg-black/60 backdrop-blur-sm p-2 text-[#E4E1D5] hover:bg-black/80 transition-all min-w-[40px] min-h-[40px] flex items-center justify-center ${
+                isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+              }`}
+              aria-label={
+                autoplay
+                  ? t('productDetail.galleryPause')
+                  : t('productDetail.galleryPlay')
+              }
+            >
+              {autoplay ? <Pause size={16} /> : <Play size={16} />}
+            </button>
+          )}
+
+          {/* Flèches latérales (desktop hover) */}
+          {hasMultiple && !isMobile && (
+            <>
+              <button
+                type="button"
+                onClick={goPrev}
+                aria-label={t('productDetail.galleryPrev')}
+                className="absolute top-1/2 start-3 -translate-y-1/2 z-10 rounded-full bg-black/55 backdrop-blur-sm p-2 text-[#E4E1D5] opacity-0 group-hover:opacity-100 hover:bg-black/80 transition-all min-w-[40px] min-h-[40px] flex items-center justify-center"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button
+                type="button"
+                onClick={goNext}
+                aria-label={t('productDetail.galleryNext')}
+                className="absolute top-1/2 end-3 -translate-y-1/2 z-10 rounded-full bg-black/55 backdrop-blur-sm p-2 text-[#E4E1D5] opacity-0 group-hover:opacity-100 hover:bg-black/80 transition-all min-w-[40px] min-h-[40px] flex items-center justify-center"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </>
           )}
         </div>
       </div>
 
-      {/* Thumbnails */}
-      <div className="flex gap-2 mt-4 overflow-x-auto hide-scrollbar pb-2">
-        {galleryImages.map((src, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => setActiveIndex(i)}
-            className={`flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded overflow-hidden border-2 transition-colors min-w-[56px] min-h-[56px] sm:min-w-0 sm:min-h-0 ${
-              safeActiveIndex === i ? 'border-[#E4E1D5]' : 'border-transparent hover:border-[#E4E1D5]/40'
-            }`}
-          >
-            {src ? (
-              <img src={src} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full bg-[#1a1a1a] flex items-center justify-center text-[#E4E1D5]/30 text-xs">
-                {i + 1}
-              </div>
-            )}
-          </button>
-        ))}
-      </div>
-      {isMobile && galleryImages.length > 1 && (
+      {/* Vignettes */}
+      {hasMultiple && (
+        <div className="flex gap-2 mt-4 overflow-x-auto hide-scrollbar pb-2">
+          {galleryImages.map((src, i) => (
+            <button
+              key={`${i}-${src.slice(-12)}`}
+              type="button"
+              onClick={() => goTo(i)}
+              className={`flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded overflow-hidden border-2 transition-colors min-w-[56px] min-h-[56px] sm:min-w-0 sm:min-h-0 ${
+                safeActiveIndex === i
+                  ? 'border-[#E4E1D5]'
+                  : 'border-transparent hover:border-[#E4E1D5]/40'
+              }`}
+              aria-label={t('productDetail.imageNum', { n: i + 1 })}
+              aria-current={safeActiveIndex === i ? 'true' : undefined}
+            >
+              {src ? (
+                <img src={src} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-[#1a1a1a] flex items-center justify-center text-[#E4E1D5]/30 text-xs">
+                  {i + 1}
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Dots mobile */}
+      {isMobile && hasMultiple && (
         <div className="flex justify-center gap-2 mt-3">
           {galleryImages.map((_, i) => (
             <button
               key={i}
               type="button"
-              onClick={() => setActiveIndex(i)}
-              className={`w-2 h-2 rounded-full transition-colors min-w-[8px] min-h-[8px] ${i === safeActiveIndex ? 'bg-[#E4E1D5]' : 'bg-[#E4E1D5]/30'}`}
+              onClick={() => goTo(i)}
+              className={`w-2 h-2 rounded-full transition-colors min-w-[8px] min-h-[8px] ${
+                i === safeActiveIndex ? 'bg-[#E4E1D5]' : 'bg-[#E4E1D5]/30'
+              }`}
               aria-label={t('productDetail.imageNum', { n: i + 1 })}
             />
           ))}
         </div>
       )}
+
+      <AnimatePresence>
+        {lightboxOpen && mainSrc && (
+          <GalleryLightbox
+            images={galleryImages}
+            index={safeActiveIndex}
+            onClose={() => setLightboxOpen(false)}
+            onPrev={goPrev}
+            onNext={goNext}
+            productName={productName}
+          />
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 4;
+const ZOOM_STEP = 0.5;
+
+/**
+ * Lightbox plein écran pour la galerie produit.
+ * - Zoom +/- (boutons, molette, double-clic)
+ * - Pan en glissant la souris / le doigt quand zoom > 1
+ * - Clavier : Esc / ← / → / + / -
+ * - Reset zoom à chaque changement d’image ou de couleur
+ */
+function GalleryLightbox({
+  images,
+  index,
+  onClose,
+  onPrev,
+  onNext,
+  productName,
+}: {
+  images: string[];
+  index: number;
+  onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+  productName: string;
+}) {
+  const { t } = useTranslation();
+  const [scale, setScale] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [drag, setDrag] = useState<{ startX: number; startY: number; baseX: number; baseY: number } | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const total = images.length;
+  const src = images[index];
+  const hasMultiple = total > 1;
+
+  const reset = useCallback(() => {
+    setScale(1);
+    setPan({ x: 0, y: 0 });
+  }, []);
+
+  const zoomIn = useCallback(
+    () => setScale((s) => Math.min(ZOOM_MAX, +(s + ZOOM_STEP).toFixed(2))),
+    [],
+  );
+  const zoomOut = useCallback(
+    () =>
+      setScale((s) => {
+        const next = Math.max(ZOOM_MIN, +(s - ZOOM_STEP).toFixed(2));
+        if (next === 1) setPan({ x: 0, y: 0 });
+        return next;
+      }),
+    [],
+  );
+
+  useEffect(() => {
+    reset();
+  }, [src, reset]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      else if (e.key === 'ArrowLeft') onPrev();
+      else if (e.key === 'ArrowRight') onNext();
+      else if (e.key === '+' || e.key === '=') zoomIn();
+      else if (e.key === '-' || e.key === '_') zoomOut();
+      else if (e.key === '0') reset();
+    };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose, onPrev, onNext, reset, zoomIn, zoomOut]);
+
+  // Listener wheel non passif (React rend onWheel passif → preventDefault inopérant).
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP;
+      setScale((s) => {
+        const next = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, +(s + delta).toFixed(2)));
+        if (next === 1) setPan({ x: 0, y: 0 });
+        return next;
+      });
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, []);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (scale <= 1) return;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    setDrag({ startX: e.clientX, startY: e.clientY, baseX: pan.x, baseY: pan.y });
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!drag) return;
+    setPan({
+      x: drag.baseX + (e.clientX - drag.startX),
+      y: drag.baseY + (e.clientY - drag.startY),
+    });
+  };
+  const onPointerUp = () => setDrag(null);
+
+  const onDoubleClick = () => {
+    if (scale > 1) reset();
+    else setScale(2);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-[60] bg-black/95 backdrop-blur-sm flex items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label={t('productDetail.galleryClose')}
+        className="absolute top-4 end-4 z-10 rounded-full bg-white/10 hover:bg-white/20 text-white p-2 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors"
+      >
+        <X size={20} />
+      </button>
+
+      {hasMultiple && (
+        <span className="absolute top-4 start-4 z-10 rounded-full bg-white/10 px-3 py-1 text-sm font-medium text-white tabular-nums">
+          {t('productDetail.galleryCounter', { current: index + 1, total })}
+        </span>
+      )}
+
+      <div
+        ref={stageRef}
+        className="relative w-full h-full flex items-center justify-center overflow-hidden select-none"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onDoubleClick={onDoubleClick}
+        style={{ cursor: scale > 1 ? (drag ? 'grabbing' : 'grab') : 'zoom-in' }}
+      >
+        {/* Couche transform pure (zoom + pan) — séparée de Framer Motion pour éviter le conflit transform */}
+        <div
+          style={{
+            transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${scale})`,
+            transformOrigin: 'center center',
+            transition: drag ? 'none' : 'transform 0.18s ease-out',
+            willChange: 'transform',
+          }}
+          className="flex items-center justify-center"
+        >
+          <img
+            key={src}
+            src={src}
+            alt={productName}
+            draggable={false}
+            className="max-w-[92vw] max-h-[88vh] object-contain pointer-events-none select-none"
+          />
+        </div>
+      </div>
+
+      {hasMultiple && (
+        <>
+          <button
+            type="button"
+            onClick={onPrev}
+            aria-label={t('productDetail.galleryPrev')}
+            className="absolute top-1/2 start-4 -translate-y-1/2 z-10 rounded-full bg-white/10 hover:bg-white/25 text-white p-3 min-w-[48px] min-h-[48px] flex items-center justify-center transition-colors"
+          >
+            <ChevronLeft size={22} />
+          </button>
+          <button
+            type="button"
+            onClick={onNext}
+            aria-label={t('productDetail.galleryNext')}
+            className="absolute top-1/2 end-4 -translate-y-1/2 z-10 rounded-full bg-white/10 hover:bg-white/25 text-white p-3 min-w-[48px] min-h-[48px] flex items-center justify-center transition-colors"
+          >
+            <ChevronRight size={22} />
+          </button>
+        </>
+      )}
+
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-sm p-1">
+        <button
+          type="button"
+          onClick={zoomOut}
+          disabled={scale <= ZOOM_MIN}
+          aria-label={t('productDetail.galleryZoomOut')}
+          className="rounded-full p-2 text-white hover:bg-white/15 disabled:opacity-40 disabled:cursor-not-allowed min-w-[40px] min-h-[40px] flex items-center justify-center"
+        >
+          <ZoomOut size={18} />
+        </button>
+        <span className="px-2 text-xs font-medium text-white/90 tabular-nums min-w-[44px] text-center">
+          {Math.round(scale * 100)}%
+        </span>
+        <button
+          type="button"
+          onClick={zoomIn}
+          disabled={scale >= ZOOM_MAX}
+          aria-label={t('productDetail.galleryZoomIn')}
+          className="rounded-full p-2 text-white hover:bg-white/15 disabled:opacity-40 disabled:cursor-not-allowed min-w-[40px] min-h-[40px] flex items-center justify-center"
+        >
+          <ZoomIn size={18} />
+        </button>
+        <button
+          type="button"
+          onClick={reset}
+          disabled={scale === 1 && pan.x === 0 && pan.y === 0}
+          aria-label={t('productDetail.galleryReset')}
+          className="rounded-full p-2 text-white hover:bg-white/15 disabled:opacity-40 disabled:cursor-not-allowed min-w-[40px] min-h-[40px] flex items-center justify-center"
+        >
+          <RefreshCcw size={16} />
+        </button>
+      </div>
+    </motion.div>
   );
 }
 
@@ -324,9 +699,9 @@ function SimilarCarousel({ products, isMobile }: { products: Product[]; isMobile
             className="flex-shrink-0 w-[75vw] min-w-[200px] sm:w-[280px] md:w-[320px] snap-center group"
           >
             <div className="aspect-[3/4] bg-[#E4E1D5]/10 rounded-sm overflow-hidden mb-4 transition-all duration-300 group-hover:shadow-[0_20px_40px_rgba(228,225,213,0.1)] group-hover:-translate-y-1">
-              {(getPrimaryImageForColor(p, p.colors[0]) || p.images[0]) ? (
+              {getPrimaryImageForColor(p, p.colors[0]) ? (
                 <img
-                  src={getPrimaryImageForColor(p, p.colors[0]) || p.images[0]}
+                  src={getPrimaryImageForColor(p, p.colors[0])}
                   alt={p.name}
                   className="w-full h-full object-cover mix-blend-multiply group-hover:scale-105 transition-transform duration-500"
                 />
@@ -366,7 +741,7 @@ export default function ProductDetailPage() {
       setSelectedColor(product.colors[0] ?? '');
     }
   }, [product?.id]);
-  const [accordionOpen, setAccordionOpen] = useState<number | null>(0);
+  const [accordionOpen, setAccordionOpen] = useState<number | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [ctaVisible, setCtaVisible] = useState(true);
   const mainCtaRef = useRef<HTMLButtonElement>(null);
@@ -444,7 +819,7 @@ export default function ProductDetailPage() {
     ];
     if (selectedColor) lines.push(`- ${t('productDetail.waColor')}: ${selectedColor}`);
     lines.push(`- ${t('productDetail.waPrice')}: ${priceStr}`);
-    window.open(`https://wa.me/?text=${encodeURIComponent(lines.join('\n'))}`, '_blank');
+    window.open(shopWhatsAppUrl(lines.join('\n')), '_blank');
   };
 
   if (!product) {
@@ -568,6 +943,22 @@ export default function ProductDetailPage() {
                 className="h-px bg-[#E4E1D5]/20"
               />
 
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.46 }}
+                className="space-y-2"
+              >
+                <p className="text-xs uppercase tracking-wider text-[#E4E1D5]/70">
+                  {t('productDetail.storeDescriptionLabel')}
+                </p>
+                <p className="text-sm leading-relaxed text-[#E4E1D5]/85 whitespace-pre-line">
+                  {product.description?.trim()
+                    ? product.description.trim()
+                    : t('productDetail.accDescBody', { name: product.name })}
+                </p>
+              </motion.div>
+
               {/* Color selector */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -675,7 +1066,7 @@ export default function ProductDetailPage() {
               >
                 <span className="text-xs uppercase tracking-wider">{t('common.share')}</span>
                 <a
-                  href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}
+                  href={shopWhatsAppUrl(shareText)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-[#E4E1D5]/60 hover:text-[#E4E1D5] transition-colors p-2 min-w-[48px] min-h-[48px] flex justify-center items-center"
@@ -720,30 +1111,23 @@ export default function ProductDetailPage() {
           className="mt-16 max-w-2xl"
         >
           <AccordionItem
-            title={t('productDetail.accDesc')}
+            title={t('productDetail.accMat')}
             open={accordionOpen === 0}
             onToggle={() => setAccordionOpen((v) => (v === 0 ? null : 0))}
-          >
-            {t('productDetail.accDescBody', { name: product.name })}
-          </AccordionItem>
-          <AccordionItem
-            title={t('productDetail.accMat')}
-            open={accordionOpen === 1}
-            onToggle={() => setAccordionOpen((v) => (v === 1 ? null : 1))}
           >
             {t('productDetail.accMatBody', { material: product.material })}
           </AccordionItem>
           <AccordionItem
             title={t('productDetail.accCare')}
-            open={accordionOpen === 2}
-            onToggle={() => setAccordionOpen((v) => (v === 2 ? null : 2))}
+            open={accordionOpen === 1}
+            onToggle={() => setAccordionOpen((v) => (v === 1 ? null : 1))}
           >
             {t('productDetail.accCareBody')}
           </AccordionItem>
           <AccordionItem
             title={t('productDetail.accShip')}
-            open={accordionOpen === 3}
-            onToggle={() => setAccordionOpen((v) => (v === 3 ? null : 3))}
+            open={accordionOpen === 2}
+            onToggle={() => setAccordionOpen((v) => (v === 2 ? null : 2))}
           >
             {t('productDetail.accShipBody')}
           </AccordionItem>

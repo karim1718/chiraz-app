@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { adminJoinProductStub, getPrimaryImageForColor } from '../../utils/productColorAssets';
 import { X, Loader2, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import { useToast } from './ui/Toast';
 
@@ -36,6 +37,11 @@ export default function StockUpdateModal({ isOpen, onClose, onSuccess, variant, 
   }, [isOpen, type]);
 
   if (!isOpen || !variant || !type) return null;
+
+  const lineThumb =
+    variant.products?.id != null
+      ? getPrimaryImageForColor(adminJoinProductStub(variant.products), variant.color)
+      : undefined;
 
   const isEntree = type === 'entrée';
 
@@ -129,8 +135,8 @@ export default function StockUpdateModal({ isOpen, onClose, onSuccess, variant, 
         {/* Content Body */}
         <div className="flex-1 bg-neutral-50 p-6">
           <div className="mb-6 flex items-center gap-4 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-            {variant.products?.images?.[0] ? (
-              <img src={variant.products.images[0]} alt="Produit" className="h-12 w-12 rounded object-cover border border-neutral-200" />
+            {lineThumb ? (
+              <img src={lineThumb} alt="Produit" className="h-12 w-12 rounded object-cover border border-neutral-200" />
             ) : (
               <div className="h-12 w-12 rounded border border-neutral-300 bg-neutral-100" />
             )}

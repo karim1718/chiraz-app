@@ -161,26 +161,9 @@
   "productCarousel": {
     "title": "Our favorites",
     "subtitle": "",
-    "cta": "Quick view",
-    "twoColors": "Available in 2 colors",
-    "p1": {
-      "name": "Urban black sneaker"
-    },
-    "p2": {
-      "name": "Essential beige trainers"
-    },
-    "p3": {
-      "name": "Elegant pink slip-on"
-    },
-    "p4": {
-      "name": "Monochrome sneaker"
-    },
-    "p5": {
-      "name": "Minimal trainers"
-    },
-    "p6": {
-      "name": "Absolute comfort"
-    }
+    "cta": "View",
+    "colorsCountOne": "Available in 1 color",
+    "colorsCount": "Available in {{count}} colors"
   },
   "material": {
     "alt": "Premium materials — detail",
@@ -267,6 +250,7 @@
     "selectSizeCta": "Select a size",
     "waOrder": "Order on WhatsApp",
     "buyBar": "Buy",
+    "storeDescriptionLabel": "Description",
     "accDesc": "Description",
     "accMat": "Materials & construction",
     "accCare": "Care",
@@ -282,7 +266,17 @@
     "waColor": "Color",
     "waPrice": "Price",
     "waUnspecified": "Not specified",
-    "imageNum": "Image {{n}}"
+    "imageNum": "Image {{n}}",
+    "galleryFullscreen": "Fullscreen",
+    "galleryClose": "Close",
+    "galleryPlay": "Start slideshow",
+    "galleryPause": "Pause slideshow",
+    "galleryPrev": "Previous image",
+    "galleryNext": "Next image",
+    "galleryZoomIn": "Zoom in",
+    "galleryZoomOut": "Zoom out",
+    "galleryReset": "Reset zoom",
+    "galleryCounter": "{{current}} / {{total}}"
   },
   "quickOrder": {
     "title": "Quick purchase",

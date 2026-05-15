@@ -2,17 +2,13 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-
-
-// Remplacer par votre numéro WhatsApp (ex: +213555123456)
-const WHATSAPP_NUMBER = '+213XXXXXXXXX';
+import { shopWhatsAppUrl } from '../lib/shopContact';
 
 export default function WhatsAppFloating() {
   const { t } = useTranslation();
   const [tooltip, setTooltip] = useState(false);
 
-
-  const href = `https://wa.me/${WHATSAPP_NUMBER.replace(/\+/g, '')}`;
+  const href = shopWhatsAppUrl();
 
   return (
     <AnimatePresence>

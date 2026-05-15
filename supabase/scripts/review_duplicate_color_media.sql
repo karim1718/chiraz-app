@@ -1,0 +1,16 @@
+-- Optional operational script (do not run blindly in production).
+-- After fixing client logic, legacy rows may still have identical URL arrays
+-- under every color key in products.color_media (from the initial backfill).
+--
+-- 1) Inspect products that have multiple color keys with the same non-empty payload:
+--    (manual review in SQL editor / psql)
+--
+-- 2) To let admins re-assign photos per color from the dashboard, you can clear
+--    color_media for specific product ids, then re-upload:
+--
+--    UPDATE public.products
+--    SET color_media = '{}'::jsonb
+--    WHERE id = 'YOUR-PRODUCT-UUID';
+--
+-- 3) products.images remains the legacy "primary gallery"; saving from
+--    ProductFormModal re-derives it from the first color that has images in color_media.

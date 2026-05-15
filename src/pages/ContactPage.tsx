@@ -21,7 +21,7 @@ function isEmailJsConfigured(): boolean {
   );
 }
 
-const WHATSAPP_NUMBER = '21620780741';
+import { shopWhatsAppUrl } from '../lib/shopContact';
 
 export default function ContactPage() {
   const { t, i18n } = useTranslation();
@@ -89,7 +89,7 @@ export default function ContactPage() {
     }
   };
 
-  const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER.replace(/\+/g, '')}`;
+  const whatsappUrl = shopWhatsAppUrl();
 
   return (
     <motion.div

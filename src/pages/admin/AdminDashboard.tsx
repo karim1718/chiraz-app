@@ -48,7 +48,12 @@ type AlertVariantRow = {
   stock: number;
   low_stock_alert: number | null;
   product_id: string;
-  products: { id: string; name: string; images?: string[] } | null;
+  products: {
+    id: string;
+    name: string;
+    images?: string[];
+    color_media?: Record<string, unknown> | null;
+  } | null;
 };
 
 const HIGH_DEBT_THRESHOLD = 1000;
@@ -186,7 +191,7 @@ export default function AdminDashboard() {
         .select(
           `
           id, size, color, stock, low_stock_alert, product_id,
-          products ( id, name, images )
+          products ( id, name, images, color_media )
         `,
         )
         .order('stock', { ascending: true });
@@ -231,7 +236,7 @@ export default function AdminDashboard() {
             quantity, price,
             variants (
               size, color,
-              products ( name, images )
+              products ( id, name, images, color_media )
             )
           )
         `,

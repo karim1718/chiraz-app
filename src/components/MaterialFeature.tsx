@@ -36,7 +36,7 @@ const MaterialFeature = () => {
                         <div className="absolute inset-0 rounded-full bg-black m-[1px] overflow-hidden">
                             {/* Infinite Breathing Animation on the Image */}
                             <motion.img
-                                src="/material_close_up_1772247860736.png"
+                                src="/shoe.jpeg"
                                 alt={t('material.alt')}
                                 className="w-full h-full object-cover mix-blend-luminosity opacity-80"
                                 animate={{

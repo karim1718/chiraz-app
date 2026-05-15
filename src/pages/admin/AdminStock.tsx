@@ -1,10 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { formatCurrencyAmount } from '../../lib/vocab';
-import type { Product } from '../../types/product';
 import {
+  adminJoinProductStub,
   normalizeHex,
-  normalizeProductColorMedia,
   getPrimaryImageForColor,
 } from '../../utils/productColorAssets';
 import { getHexForColor } from '../../utils/colorMap';
@@ -290,29 +289,12 @@ export default function AdminStock() {
                   const isOutOfStock = item.stock === 0;
                   const isLowStock = item.stock > 0 && item.stock <= (item.low_stock_alert || 3);
                   const pName = item.products?.name || "Produit inconnu";
-                  const thumbProduct: Product | null = item.products?.id
-                    ? {
-                        id: item.products.id,
-                        name: item.products.name || '',
-                        price: item.products.price ?? 0,
-                        category: '',
-                        images: item.products.images || [],
-                        colors: [],
-                        sizes: [],
-                        material: '',
-                        color_media: normalizeProductColorMedia(
-                          item.products.color_media as Record<string, unknown>,
-                        ),
-                        imagesByColor: normalizeProductColorMedia(
-                          item.products.color_media as Record<string, unknown>,
-                        ),
-                      }
-                    : null;
-                  const thumbUrl =
-                    thumbProduct && item.color
-                      ? getPrimaryImageForColor(thumbProduct, item.color) ||
-                        item.products?.images?.[0]
-                      : item.products?.images?.[0];
+                  const thumbUrl = item.products?.id
+                    ? getPrimaryImageForColor(
+                        adminJoinProductStub(item.products),
+                        item.color ?? undefined,
+                      )
+                    : undefined;
                   const colorDotHex = item.color_hex
                     ? normalizeHex(item.color_hex)
                     : getHexForColor(item.color || '');

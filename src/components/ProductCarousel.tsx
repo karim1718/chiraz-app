@@ -1,193 +1,176 @@
-import { useRef, useState, useEffect, useMemo } from 'react';
-import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import type { Product } from '../types/product';
+import { useProductStore } from '../store/productStore';
+import { getPrimaryImageForColor } from '../utils/productColorAssets';
 import { formatCurrencyAmount } from '../lib/vocab';
+
+function formatProductPrice(product: Product, t: (key: string, opts?: Record<string, unknown>) => string) {
+  if (product.minPrice != null && product.minPrice < product.price) {
+    return t('common.fromPrice', {
+      price: formatCurrencyAmount(Number(product.minPrice), { maximumFractionDigits: 0 }),
+    });
+  }
+  if (product.salePercent != null && product.original_price) {
+    return formatCurrencyAmount(Number(product.price), { maximumFractionDigits: 0 });
+  }
+  return formatCurrencyAmount(Number(product.price), { maximumFractionDigits: 0 });
+}
+
+const IMAGE_BOX_CLASS =
+  'relative w-[280px] h-[280px] max-w-full aspect-square shrink-0 overflow-hidden rounded-lg bg-[#e4e1d5] flex items-center justify-center p-4 sm:p-5';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 24 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: 'easeOut' as const } },
+};
+
+function FeaturedProductCard({ product }: { product: Product }) {
+  const { t } = useTranslation();
+  const primaryColor = product.colors[0];
+  const imageUrl = primaryColor
+    ? getPrimaryImageForColor(product, primaryColor)
+    : product.images?.[0] ?? '';
+  const priceLabel = formatProductPrice(product, t);
+
+  return (
+    <motion.article variants={itemVariants} className="flex w-full max-w-[320px] flex-col items-center text-center">
+      <Link to={`/product/${product.id}`} className="group flex w-full flex-col items-center">
+        <motion.div
+          className={`${IMAGE_BOX_CLASS} transition-shadow duration-500 group-hover:shadow-[0_16px_40px_rgba(228,225,213,0.12)]`}
+        >
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={product.name}
+              loading="lazy"
+              width={280}
+              height={280}
+              className="max-h-full max-w-full object-contain object-center mix-blend-multiply transition-transform duration-500 group-hover:scale-[1.03]"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                target.nextElementSibling?.classList.remove('hidden');
+              }}
+            />
+          ) : null}
+          <span
+            className={`absolute inset-0 flex items-center justify-center px-4 text-center font-serif text-lg text-[#0a0a0a]/40 ${
+              imageUrl ? 'hidden' : ''
+            }`}
+          >
+            {product.name}
+          </span>
+        </motion.div>
+
+        <h3 className="mt-5 w-full truncate font-serif text-base tracking-wide text-[#e4e1d5] sm:text-lg">
+          {product.name}
+        </h3>
+
+        {priceLabel ? (
+          <p className="mt-1.5 font-sans text-sm tracking-widest text-[#e4e1d5]/70">{priceLabel}</p>
+        ) : null}
+
+        <span className="mt-4 inline-flex min-h-[40px] items-center justify-center border border-[#e4e1d5]/35 px-6 py-2 text-[10px] font-medium uppercase tracking-[0.22em] text-[#e4e1d5] transition-colors duration-300 group-hover:border-[#e4e1d5] group-hover:bg-[#e4e1d5] group-hover:text-[#0a0a0a]">
+          {t('productCarousel.cta')}
+        </span>
+      </Link>
+    </motion.article>
+  );
+}
+
+function FeaturedGridSkeleton() {
+  const { t } = useTranslation();
+
+  return (
+    <section className="relative overflow-hidden border-t border-[#e4e1d5]/10 bg-[#000000] px-4 py-12 sm:py-20 md:px-8 lg:px-12">
+      <div className="mx-auto max-w-[1280px]">
+        <div className="mb-10 sm:mb-14">
+          <h2 className="mb-4 font-serif text-3xl text-[#e4e1d5] sm:text-4xl md:text-5xl">
+            {t('productCarousel.title')}
+          </h2>
+          <motion.div className="h-px w-24 origin-left bg-[#e4e1d5] rtl:origin-right" />
+        </div>
+        <motion.div className="grid grid-cols-1 justify-items-center gap-6 md:grid-cols-2 md:gap-8 lg:grid-cols-3 xl:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <motion.div key={i} className="flex w-full max-w-[320px] animate-pulse flex-col items-center">
+              <div className={`${IMAGE_BOX_CLASS} bg-[#e4e1d5]/15`} />
+              <div className="mt-5 h-5 w-32 rounded bg-[#e4e1d5]/15" />
+              <motion.div className="mt-2 h-4 w-20 rounded bg-[#e4e1d5]/10" />
+              <motion.div className="mt-4 h-9 w-24 rounded border border-[#e4e1d5]/10" />
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
+    </section>
+  );
+}
 
 const ProductCarousel = () => {
   const { t } = useTranslation();
-  const products = useMemo(
-    () => [
-      {
-        id: 1,
-        name: t('productCarousel.p1.name'),
-        price: formatCurrencyAmount(12000, { maximumFractionDigits: 0 }),
-        image: '/product_black_shoe_1772247846152.png',
-      },
-      {
-        id: 2,
-        name: t('productCarousel.p2.name'),
-        price: formatCurrencyAmount(11000, { maximumFractionDigits: 0 }),
-        image: '/product_beige_shoe_1772247887498.png',
-      },
-      {
-        id: 3,
-        name: t('productCarousel.p3.name'),
-        price: formatCurrencyAmount(9500, { maximumFractionDigits: 0 }),
-        image: '/product_women_shoe_1772247905393.png',
-      },
-      {
-        id: 4,
-        name: t('productCarousel.p4.name'),
-        price: formatCurrencyAmount(12000, { maximumFractionDigits: 0 }),
-        image: '/product_black_shoe_1772247846152.png',
-      },
-      {
-        id: 5,
-        name: t('productCarousel.p5.name'),
-        price: formatCurrencyAmount(11000, { maximumFractionDigits: 0 }),
-        image: '/product_beige_shoe_1772247887498.png',
-      },
-      {
-        id: 6,
-        name: t('productCarousel.p6.name'),
-        price: formatCurrencyAmount(9500, { maximumFractionDigits: 0 }),
-        image: '/product_women_shoe_1772247905393.png',
-      },
-    ],
-    [t],
+  const isLoading = useProductStore((s) => s.isLoading);
+  const isLoaded = useProductStore((s) => s.isLoaded);
+  const products = useProductStore((s) => s.products);
+
+  const featured = useMemo(
+    () =>
+      products
+        .filter((p) => p.is_featured === true)
+        .sort((a, b) => a.name.localeCompare(b.name, 'fr')),
+    [products],
   );
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
 
-  const scroll = (direction: 'left' | 'right') => {
-    if (scrollRef.current) {
-      const { scrollLeft, clientWidth } = scrollRef.current;
-      const scrollAmount = clientWidth * 0.8;
-      scrollRef.current.scrollTo({
-        left: direction === 'left' ? scrollLeft - scrollAmount : scrollLeft + scrollAmount,
-        behavior: 'smooth',
-      });
-    }
-  };
+  if (isLoaded && featured.length === 0) {
+    return null;
+  }
 
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const onScroll = () => {
-      const cardWidth = el.querySelector('[data-carousel-card]')?.getBoundingClientRect().width ?? 0;
-      const gap = 32;
-      const index = Math.round(el.scrollLeft / (cardWidth + gap));
-      setActiveIndex(Math.max(0, Math.min(index, products.length - 1)));
-    };
-    el.addEventListener('scroll', onScroll);
-    onScroll();
-    return () => el.removeEventListener('scroll', onScroll);
-  }, []);
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.15, delayChildren: 0.2 },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 50 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeOut' as const } },
-  };
+  if (isLoading && featured.length === 0) {
+    return <FeaturedGridSkeleton />;
+  }
 
   return (
-    <section className="py-12 sm:py-24 bg-[#000000] overflow-hidden relative border-t border-[#e4e1d5]/10 px-4 sm:px-0">
-      <div className="px-2 sm:px-6 md:px-12 xl:px-24 flex items-end justify-between mb-8 sm:mb-12">
-        <div>
-          <motion.h2
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: '-100px' }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
-            className="text-3xl sm:text-4xl md:text-5xl font-serif text-[#e4e1d5] mb-4"
-          >
+    <section className="relative overflow-hidden border-t border-[#e4e1d5]/10 bg-[#000000] px-4 py-12 sm:py-20 md:px-8 lg:px-12">
+      <div className="mx-auto max-w-[1280px]">
+        <motion.header
+          initial={{ opacity: 0, x: -24 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true, margin: '-80px' }}
+          transition={{ duration: 0.7, ease: 'easeOut' }}
+          className="mb-10 sm:mb-14"
+        >
+          <h2 className="mb-4 font-serif text-3xl text-[#e4e1d5] sm:text-4xl md:text-5xl">
             {t('productCarousel.title')}
-          </motion.h2>
+          </h2>
           <motion.div
             initial={{ scaleX: 0 }}
             whileInView={{ scaleX: 1 }}
             viewport={{ once: true }}
-            transition={{ duration: 1, delay: 0.2, ease: 'anticipate' }}
-            className="h-[1px] w-24 bg-[#e4e1d5] origin-left rtl:origin-right"
+            transition={{ duration: 0.9, delay: 0.15, ease: 'anticipate' }}
+            className="h-px w-24 origin-left bg-[#e4e1d5] rtl:origin-right"
           />
-        </div>
+        </motion.header>
 
-        <div className="hidden md:flex gap-4">
-          <button
-            type="button"
-            onClick={() => scroll('left')}
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center p-3 border border-[#e4e1d5]/30 text-[#e4e1d5] hover:bg-[#e4e1d5] hover:text-black transition-all duration-300 rounded-full"
-            aria-label={t('common.scrollLeft')}
-          >
-            <ChevronLeft size={20} strokeWidth={1.5} />
-          </button>
-          <button
-            type="button"
-            onClick={() => scroll('right')}
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center p-3 border border-[#e4e1d5]/30 text-[#e4e1d5] hover:bg-[#e4e1d5] hover:text-black transition-all duration-300 rounded-full"
-            aria-label={t('common.scrollRight')}
-          >
-            <ChevronRight size={20} strokeWidth={1.5} />
-          </button>
-        </div>
-      </div>
-
-      <motion.div
-        ref={scrollRef}
-        variants={containerVariants}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: '-50px' }}
-        className="flex gap-4 md:gap-8 overflow-x-auto snap-x snap-mandatory hide-scrollbar px-4 sm:px-6 md:px-12 xl:px-24 pb-8 sm:pb-12 pt-4"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-      >
-        {products.map((product) => (
-          <motion.div
-            key={product.id}
-            data-carousel-card
-            variants={itemVariants}
-            className="min-w-[75vw] sm:min-w-[300px] md:min-w-[400px] snap-center group cursor-pointer flex-shrink-0"
-          >
-            <div className="bg-[#e4e1d5] aspect-[3/4] overflow-hidden mb-4 sm:mb-6 relative transition-all duration-500 ease-out md:duration-700 group-hover:shadow-[0_20px_40px_rgba(228,225,213,0.15)] md:group-hover:-translate-y-2">
-              <img
-                src={product.image}
-                alt={product.name}
-                loading="lazy"
-                className="w-full h-full object-cover mix-blend-multiply transition-all duration-500 md:duration-1000 md:group-hover:scale-110 md:group-hover:rotate-1 group-active:opacity-90"
-              />
-              <div className="absolute inset-x-0 bottom-0 p-4 md:p-6 translate-y-0 opacity-100 md:translate-y-8 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 transition-all duration-500 ease-out">
-                <button
-                  type="button"
-                  className="w-full bg-[#000000] text-[#e4e1d5] py-3 md:py-4 font-medium text-xs tracking-widest hover:bg-neutral-800 active:bg-neutral-800 transition-colors uppercase min-h-[44px]"
-                >
-                  {t('productCarousel.cta')}
-                </button>
-              </div>
-            </div>
-            <div className="flex justify-between items-start mb-1 sm:mb-2">
-              <h3 className="font-serif text-[#e4e1d5] text-base sm:text-xl tracking-wide truncate pr-2">{product.name}</h3>
-              <span className="font-sans text-[#e4e1d5] tracking-widest text-sm flex-shrink-0">{product.price}</span>
-            </div>
-            <p className="text-[#e4e1d5]/50 text-xs tracking-widest font-sans uppercase">{t('productCarousel.twoColors')}</p>
-          </motion.div>
-        ))}
-      </motion.div>
-
-      <div className="flex justify-center gap-2 mt-6 md:hidden">
-        {products.map((_, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => {
-              const el = scrollRef.current;
-              if (el) {
-                const card = el.querySelector('[data-carousel-card]');
-                const w = (card?.getBoundingClientRect().width ?? 0) + 16;
-                el.scrollTo({ left: i * w, behavior: 'smooth' });
-              }
-            }}
-            className={`w-2 h-2 rounded-full transition-colors min-w-[12px] min-h-[12px] ${i === activeIndex ? 'bg-[#e4e1d5]' : 'bg-[#e4e1d5]/30'}`}
-            aria-label={`${t('common.slide')} ${i + 1}`}
-          />
-        ))}
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-40px' }}
+          className="grid grid-cols-1 justify-items-center gap-6 md:grid-cols-2 md:gap-8 lg:grid-cols-3 xl:grid-cols-4"
+        >
+          {featured.map((product) => (
+            <FeaturedProductCard key={product.id} product={product} />
+          ))}
+        </motion.div>
       </div>
     </section>
   );

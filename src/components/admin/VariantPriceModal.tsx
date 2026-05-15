@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { CURRENCY } from '../../lib/vocab';
 import { X, Loader2, Tag } from 'lucide-react';
+import { adminJoinProductStub, getPrimaryImageForColor } from '../../utils/productColorAssets';
 
 interface VariantPriceModalProps {
   isOpen: boolean;
@@ -23,6 +24,11 @@ export default function VariantPriceModal({ isOpen, onClose, onSuccess, variant 
   }, [isOpen, variant]);
 
   if (!isOpen || !variant) return null;
+
+  const lineThumb =
+    variant.products?.id != null
+      ? getPrimaryImageForColor(adminJoinProductStub(variant.products), variant.color)
+      : undefined;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,8 +77,8 @@ export default function VariantPriceModal({ isOpen, onClose, onSuccess, variant 
         {/* Content Body */}
         <div className="flex-1 bg-neutral-50 p-6">
           <div className="mb-6 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm flex items-center gap-4">
-            {variant.products?.images?.[0] ? (
-              <img src={variant.products.images[0]} alt="Produit" className="h-12 w-12 rounded object-cover border border-neutral-200" />
+            {lineThumb ? (
+              <img src={lineThumb} alt="Produit" className="h-12 w-12 rounded object-cover border border-neutral-200" />
             ) : (
               <div className="h-12 w-12 rounded border border-neutral-300 bg-neutral-100" />
             )}

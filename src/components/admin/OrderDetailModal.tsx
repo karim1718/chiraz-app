@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { CURRENCY, formatCurrencyAmount } from '../../lib/vocab';
+import { adminJoinProductStub, getPrimaryImageForColor } from '../../utils/productColorAssets';
 import type { Order } from '../../types/order';
 import { openWhatsAppQuickChat } from '../../services/notificationService';
 
@@ -74,7 +75,7 @@ export default function OrderDetailModal({
           quantity, price,
           variants (
             size, color,
-            products ( name, images )
+            products ( id, name, images, color_media )
           )
         )
       `,
@@ -282,6 +283,11 @@ export default function OrderDetailModal({
                     const pName = item.variants?.products?.name || 'Produit Inconnu';
                     const pSize = item.variants?.size;
                     const pColor = item.variants?.color;
+                    const prodRow = item.variants?.products;
+                    const orderLineThumb =
+                      prodRow?.id != null
+                        ? getPrimaryImageForColor(adminJoinProductStub(prodRow), pColor ?? undefined)
+                        : undefined;
 
                     return (
                       <div
@@ -289,9 +295,9 @@ export default function OrderDetailModal({
                         className="flex gap-4 rounded-lg border border-neutral-100 bg-neutral-50/50 p-3"
                       >
                         <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-md border border-neutral-200 bg-white">
-                          {item.variants?.products?.images?.[0] ? (
+                          {orderLineThumb ? (
                             <img
-                              src={item.variants.products.images[0]}
+                              src={orderLineThumb}
                               alt={pName}
                               className="h-full w-full object-cover"
                             />

@@ -161,26 +161,9 @@
   "productCarousel": {
     "title": "Nos Favoris",
     "subtitle": "",
-    "cta": "Aperçu Rapide",
-    "twoColors": "Disponible en 2 couleurs",
-    "p1": {
-      "name": "Sneaker Urbain Noir"
-    },
-    "p2": {
-      "name": "Baskets Essentielles Beige"
-    },
-    "p3": {
-      "name": "Slip-On Élégant Rose"
-    },
-    "p4": {
-      "name": "Sneaker Monochrome"
-    },
-    "p5": {
-      "name": "Baskets Minimalistes"
-    },
-    "p6": {
-      "name": "Confort Absolu"
-    }
+    "cta": "Voir",
+    "colorsCountOne": "Disponible en 1 couleur",
+    "colorsCount": "Disponible en {{count}} couleurs"
   },
   "material": {
     "alt": "Détails des matériaux Premium",
@@ -267,6 +250,7 @@
     "selectSizeCta": "Sélectionnez une pointure",
     "waOrder": "Commander sur WhatsApp",
     "buyBar": "Acheter",
+    "storeDescriptionLabel": "Description",
     "accDesc": "Description",
     "accMat": "Matières & Fabrication",
     "accCare": "Entretien",
@@ -282,7 +266,17 @@
     "waColor": "Couleur",
     "waPrice": "Prix",
     "waUnspecified": "Non spécifié",
-    "imageNum": "Image {{n}}"
+    "imageNum": "Image {{n}}",
+    "galleryFullscreen": "Plein écran",
+    "galleryClose": "Fermer",
+    "galleryPlay": "Lancer le diaporama",
+    "galleryPause": "Mettre en pause",
+    "galleryPrev": "Image précédente",
+    "galleryNext": "Image suivante",
+    "galleryZoomIn": "Zoomer",
+    "galleryZoomOut": "Dézoomer",
+    "galleryReset": "Réinitialiser le zoom",
+    "galleryCounter": "{{current}} / {{total}}"
   },
   "quickOrder": {
     "title": "Achat Rapide",

@@ -8,6 +8,7 @@ import { useProductStore } from '../store/productStore';
 import { useSearchStore } from '../store/searchStore';
 import { normalizeSearch } from '../utils/search';
 import { formatCurrencyAmount } from '../lib/vocab';
+import { getPrimaryImageForColor } from '../utils/productColorAssets';
 
 const FEATURED_IDS = ['chz-001', 'chz-004', 'chz-005', 'chz-007'];
 const POPULAR_TAG_KEYS = [
@@ -180,7 +181,9 @@ export default function SearchOverlay() {
                   <section>
                     <h3 className="font-serif text-lg text-[#E4E1D5]/80 mb-4">{t('search.trends')}</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {featured.map((product, i) => (
+                      {featured.map((product, i) => {
+                        const thumb = getPrimaryImageForColor(product, product.colors?.[0]);
+                        return (
                         <motion.button
                           key={product.id}
                           type="button"
@@ -191,9 +194,9 @@ export default function SearchOverlay() {
                           className="text-start group"
                         >
                           <div className="aspect-square rounded-lg overflow-hidden bg-[#1a1a1a] mb-2">
-                            {product.images[0] ? (
+                            {thumb ? (
                               <img
-                                src={product.images[0]}
+                                src={thumb}
                                 alt=""
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               />
@@ -206,7 +209,8 @@ export default function SearchOverlay() {
                             {formatCurrencyAmount(Number(product.price), { maximumFractionDigits: 0 })}
                           </p>
                         </motion.button>
-                      ))}
+                        );
+                      })}
                     </div>
                   </section>
                   <section>
@@ -241,7 +245,9 @@ export default function SearchOverlay() {
                     {t('search.resultsFor', { count: results.length, query })}
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {results.map((product, i) => (
+                    {results.map((product, i) => {
+                      const thumb = getPrimaryImageForColor(product, product.colors?.[0]);
+                      return (
                       <motion.button
                         key={product.id}
                         type="button"
@@ -252,9 +258,9 @@ export default function SearchOverlay() {
                         className="flex items-center gap-4 p-3 rounded-lg text-start min-h-[48px] hover:bg-[#E4E1D5]/10 rtl:hover:-translate-x-2 hover:translate-x-2 transition-all duration-200 group w-full"
                       >
                         <div className="w-16 h-16 rounded-lg overflow-hidden bg-[#1a1a1a] flex-shrink-0">
-                          {product.images[0] ? (
+                          {thumb ? (
                             <img
-                              src={product.images[0]}
+                              src={thumb}
                               alt=""
                               className="w-full h-full object-cover"
                             />
@@ -272,7 +278,8 @@ export default function SearchOverlay() {
                           </p>
                         </div>
                       </motion.button>
-                    ))}
+                      );
+                    })}
                   </div>
                 </motion.div>
               )}

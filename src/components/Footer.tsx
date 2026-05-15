@@ -3,8 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Instagram, Facebook, MessageCircle, Mail, Phone, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-
-const WHATSAPP_NUMBER = '21627522650'
+import { shopWhatsAppUrl } from '../lib/shopContact';
 
 const container = {
   hidden: { opacity: 0 },
@@ -74,10 +73,22 @@ export default function Footer() {
               {t('footer.brand')}
             </p>
             <div className="flex gap-4">
-              <a href="#" aria-label={t('footer.instagram')} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-[#E4E1D5]/60 hover:text-[#E4E1D5] transition-colors">
+              <a
+                href="https://www.instagram.com/chiraz.since1978/?hl=fr"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t('footer.instagram')}
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-[#E4E1D5]/60 hover:text-[#E4E1D5] transition-colors"
+              >
                 <Instagram size={22} />
               </a>
-              <a href="#" aria-label={t('footer.facebook')} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-[#E4E1D5]/60 hover:text-[#E4E1D5] transition-colors">
+              <a
+                href="https://www.facebook.com/profile.php?id=61583719855990"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t('footer.facebook')}
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-[#E4E1D5]/60 hover:text-[#E4E1D5] transition-colors"
+              >
                 <Facebook size={22} />
               </a>
               <a href="#" aria-label={t('footer.tiktok')} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-[#E4E1D5]/60 hover:text-[#E4E1D5] transition-colors">
@@ -151,7 +162,7 @@ export default function Footer() {
                 <Phone size={16} /> 216  20 78 07 41
               </a>
               <a
-                href={`https://wa.me/${WHATSAPP_NUMBER.replace(/\+/g, '')}`}
+                href={shopWhatsAppUrl()}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 min-h-[48px] px-4 py-2.5 bg-[#25D366] text-white text-sm font-medium rounded-lg hover:bg-[#20BD5A] transition-colors"

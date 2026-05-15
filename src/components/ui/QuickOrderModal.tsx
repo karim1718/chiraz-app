@@ -10,6 +10,7 @@ import { useWindowSize, useBodyScrollLock } from '../../hooks';
 import { createOrder, StockError } from '../../services/orderService';
 import { formatCurrencyAmount } from '../../lib/vocab';
 import { fetchShopShippingSettings } from '../../lib/shopShippingSettings';
+import { shopWhatsAppUrl } from '../../lib/shopContact';
 
 interface QuickOrderModalProps {
   isOpen: boolean;
@@ -62,7 +63,7 @@ export default function QuickOrderModal({ isOpen, onClose, product, selectedSize
   };
 
   const orderThumb = product
-    ? getPrimaryImageForColor(product, selectedColor || product.colors[0]) || product.images[0]
+    ? getPrimaryImageForColor(product, selectedColor || product.colors[0]) ?? ''
     : '';
 
   if (!product) return null;
@@ -125,7 +126,7 @@ export default function QuickOrderModal({ isOpen, onClose, product, selectedSize
       lines.push(`- ${t('quickOrder.waLineTotal')}: ${totStr}`);
     }
     lines.push('', `- ${t('quickOrder.waLineName')}: ${fullName}`, `- ${t('quickOrder.waLineTel')}: ${phone}`, `- ${t('quickOrder.waLineCity')}: ${city}`);
-    window.open(`https://wa.me/?text=${encodeURIComponent(lines.join('\n'))}`, '_blank');
+    window.open(shopWhatsAppUrl(lines.join('\n')), '_blank');
   };
 
   return (
@@ -163,7 +164,16 @@ export default function QuickOrderModal({ isOpen, onClose, product, selectedSize
 
             <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
               <div className="flex gap-4 mb-8 bg-[#E4E1D5]/5 p-4 rounded-xl border border-[#E4E1D5]/10">
-                <img src={orderThumb} alt={product.name} className="w-20 h-20 object-cover rounded-lg" />
+                {orderThumb ? (
+                  <img src={orderThumb} alt={product.name} className="w-20 h-20 object-cover rounded-lg shrink-0" />
+                ) : (
+                  <div
+                    className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg border border-[#E4E1D5]/20 bg-[#0a0a0a] text-center text-[10px] text-[#E4E1D5]/50"
+                    aria-hidden
+                  >
+                    —
+                  </div>
+                )}
                 <div className="flex flex-col justify-center">
                   <h3 className="font-serif text-lg text-[#E4E1D5]">{product.name}</h3>
                   <p className="text-[#E4E1D5]/70 text-sm mt-1">

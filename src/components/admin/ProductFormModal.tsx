@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { CURRENCY } from '../../lib/vocab';
-import { X, Upload, Plus, Trash2, Loader2 } from 'lucide-react';
+import { X, Upload, Plus, Trash2, Loader2, Crop } from 'lucide-react';
+import ImageCropModal from './ImageCropModal';
 import type { Product } from '../../types/product';
 import type { Variant } from '../../types/variant';
 import {
@@ -123,6 +124,41 @@ function restrictMediaToVariantColors(
   return out;
 }
 
+/**
+ * Slug ASCII pour clé Supabase Storage : décompose les accents (NFD), supprime les
+ * diacritiques, conserve uniquement [a-z0-9_-]. Évite « Invalid key: .../Café/... ».
+ */
+function slugifyColorForStorage(label: string): string {
+  const ascii = label
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40);
+  return ascii || 'default';
+}
+
+/** PostgREST / Supabase renvoie souvent un plain object, pas `instanceof Error`. */
+function formatUnknownError(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === 'object') {
+    const o = err as Record<string, unknown>;
+    const bits = [o.message, o.details, o.hint].filter(
+      (x): x is string => typeof x === 'string' && x.trim().length > 0,
+    );
+    if (bits.length) return [...new Set(bits)].join(' — ');
+    if (typeof o.code === 'string' && o.code.trim()) return `Code ${o.code}`;
+  }
+  try {
+    const s = JSON.stringify(err);
+    if (s && s !== '{}') return s;
+  } catch {
+    /* ignore */
+  }
+  return 'Erreur inconnue';
+}
+
 export default function ProductFormModal({ isOpen, onClose, product, onSuccess }: ProductFormModalProps) {
   const { showToast } = useToast();
   const isEditing = !!product;
@@ -139,9 +175,11 @@ export default function ProductFormModal({ isOpen, onClose, product, onSuccess }
   /** URLs par libellé de couleur (aligné sur variants.color). */
   const [colorMedia, setColorMedia] = useState<Record<string, string[]>>({});
   const [isUploading, setIsUploading] = useState(false);
+  /** État courant de la modale de recadrage. */
+  const [cropTarget, setCropTarget] = useState<{ colorKey: string; index: number; url: string } | null>(null);
   const initialVariantColorsRef = useRef<Map<string, string>>(new Map());
-  // Un ID temporaire pour lier les images avant même la sauvegarde en mode création
-  const [tempProductId] = useState(() => crypto.randomUUID());
+  /** ID dossier Storage + insert `products.id` en création ; doit être régénéré à chaque nouvelle fiche (sinon 409 doublon). */
+  const [tempProductId, setTempProductId] = useState(() => crypto.randomUUID());
 
   // Variants State
   const [variants, setVariants] = useState<FormVariant[]>([]);
@@ -151,8 +189,9 @@ export default function ProductFormModal({ isOpen, onClose, product, onSuccess }
   // Global State
   const [isSaving, setIsSaving] = useState(false);
 
-  // Initialize Data
+  // Initialize Data (à chaque ouverture : évite réutiliser le même `tempProductId` → conflit 409 sur insert)
   useEffect(() => {
+    if (!isOpen) return;
     initialVariantColorsRef.current = new Map();
 
     if (isEditing && product) {
@@ -196,14 +235,9 @@ export default function ProductFormModal({ isOpen, onClose, product, onSuccess }
           list.forEach((v: Variant) => idMap.set(v.id, (v.color || '').trim()));
           initialVariantColorsRef.current = idMap;
 
-          let cm = normalizeProductColorMedia(prow?.color_media as Record<string, unknown>);
-          const legacyImgs = (prow?.images as string[]) || [];
-          const labels = [...new Set(list.map((v: Variant) => (v.color || '').trim()).filter(Boolean))];
-          for (const c of labels) {
-            if (!cm[c]?.length && legacyImgs.length) {
-              cm = { ...cm, [c]: [...legacyImgs] };
-            }
-          }
+          // Ne pas recopier products.images sur chaque couleur : cela dupliquait la même galerie
+          // (ex. Noir) sur toutes les variantes (ex. Café). Les URLs restent celles de color_media uniquement.
+          const cm = normalizeProductColorMedia(prow?.color_media as Record<string, unknown>);
           setColorMedia(cm);
         } catch (err) {
           console.error('Erreur chargement variants:', err);
@@ -213,6 +247,7 @@ export default function ProductFormModal({ isOpen, onClose, product, onSuccess }
       };
       void load();
     } else {
+      setTempProductId(crypto.randomUUID());
       setName('');
       setDescription('');
       setPrice('');
@@ -225,7 +260,7 @@ export default function ProductFormModal({ isOpen, onClose, product, onSuccess }
       setDeletedVariantIds([]);
       addEmptyVariant();
     }
-  }, [product?.id, isEditing]);
+  }, [isOpen, product?.id, isEditing]);
 
   const variantColorKeys = useMemo(
     () =>
@@ -258,8 +293,7 @@ export default function ProductFormModal({ isOpen, onClose, product, onSuccess }
 
     setIsUploading(true);
     const targetFolderId = isEditing ? product!.id : tempProductId;
-    const safeFolder =
-      colorKey.replace(/[^\w\s\u00C0-\u024f-]/g, '').trim().slice(0, 40) || 'default';
+    const safeFolder = slugifyColorForStorage(colorKey);
 
     try {
       const newUrls = [...current];
@@ -287,11 +321,48 @@ export default function ProductFormModal({ isOpen, onClose, product, onSuccess }
       }
       setColorMedia((prev) => ({ ...prev, [colorKey]: newUrls }));
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = formatUnknownError(err);
       showToast(`Échec de l'import : ${msg}`, 'error');
     } finally {
       setIsUploading(false);
       e.target.value = '';
+    }
+  };
+
+  /**
+   * Recadrage : upload d’un nouveau fichier (rogné), suppression de l’ancien dans le bucket,
+   * remplacement de l’URL à la même position dans color_media.
+   */
+  const applyCroppedImage = async (colorKey: string, index: number, blob: Blob) => {
+    const targetFolderId = isEditing ? product!.id : tempProductId;
+    const safeFolder = slugifyColorForStorage(colorKey);
+    const fileName = `${Math.random().toString(36).substring(2)}.jpg`;
+    const filePath = `products/${targetFolderId}/${safeFolder}/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(PRODUCT_IMAGES_BUCKET)
+      .upload(filePath, blob, { contentType: 'image/jpeg' });
+    if (uploadError) {
+      throw uploadError;
+    }
+    const { data } = supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(filePath);
+
+    const previousUrl = colorMedia[colorKey]?.[index];
+    setColorMedia((prev) => {
+      const arr = [...(prev[colorKey] || [])];
+      arr[index] = data.publicUrl;
+      return { ...prev, [colorKey]: arr };
+    });
+
+    if (previousUrl) {
+      try {
+        const pathMatch = previousUrl.match(new RegExp(`${PRODUCT_IMAGES_BUCKET}/(.*)$`));
+        if (pathMatch && pathMatch[1]) {
+          await supabase.storage.from(PRODUCT_IMAGES_BUCKET).remove([pathMatch[1]]);
+        }
+      } catch (e) {
+        console.warn('Suppression de l’ancienne image impossible (non bloquant)', e);
+      }
     }
   };
 
@@ -457,7 +528,7 @@ export default function ProductFormModal({ isOpen, onClose, product, onSuccess }
       onClose();
 
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = formatUnknownError(err);
       showToast(`Enregistrement impossible : ${msg}`, 'error');
     } finally {
       setIsSaving(false);
@@ -660,7 +731,7 @@ export default function ProductFormModal({ isOpen, onClose, product, onSuccess }
             <div className="border-b border-neutral-100 pb-2 mb-4">
               <h3 className="font-semibold text-neutral-900">Photos par couleur</h3>
               <p className="mt-1 text-xs text-neutral-500">
-                Chaque série correspond au nom de couleur saisi dans les variantes. Première image = visuel principal pour cette couleur (max 5 par couleur).
+                Chaque série correspond au nom de couleur saisi dans les variantes. Première image = visuel principal pour cette couleur (max 5 par couleur). Ajoutez des photos pour chaque couleur : aucune image n’est partagée automatiquement entre les couleurs. Sur la boutique, la grande photo s’affiche dans un <strong className="text-neutral-700">cadre carré (1:1)</strong> sans rogner l’image : les fichiers paysage ou portrait laissent des bandes. Pour remplir le cadre, importez une image déjà carrée ou utilisez <strong className="text-neutral-700">Recadrer</strong> (format 1:1 proposé par défaut).
               </p>
             </div>
             {variantColorKeys.length === 0 ? (
@@ -710,13 +781,26 @@ export default function ProductFormModal({ isOpen, onClose, product, onSuccess }
                               alt={`${colorKey} ${idx + 1}`}
                               className="h-full w-full object-cover"
                             />
-                            <button
-                              type="button"
-                              onClick={() => removeImageFromColor(colorKey, idx)}
-                              className="absolute right-2 top-2 rounded-full bg-white/90 p-1.5 text-red-600 opacity-0 shadow-sm transition-all hover:bg-red-600 hover:text-white group-hover:opacity-100"
-                            >
-                              <X size={14} />
-                            </button>
+                            <div className="absolute right-2 top-2 flex gap-1.5 opacity-0 transition-all group-hover:opacity-100">
+                              <button
+                                type="button"
+                                onClick={() => setCropTarget({ colorKey, index: idx, url })}
+                                className="rounded-full bg-white/90 p-1.5 text-neutral-700 shadow-sm transition-all hover:bg-neutral-900 hover:text-white"
+                                title="Recadrer"
+                                aria-label={`Recadrer ${colorKey} image ${idx + 1}`}
+                              >
+                                <Crop size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeImageFromColor(colorKey, idx)}
+                                className="rounded-full bg-white/90 p-1.5 text-red-600 shadow-sm transition-all hover:bg-red-600 hover:text-white"
+                                title="Supprimer"
+                                aria-label={`Supprimer ${colorKey} image ${idx + 1}`}
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
                             {idx === 0 && (
                               <span className="absolute bottom-2 left-2 rounded bg-black px-2 py-0.5 text-[10px] font-bold uppercase text-white shadow-sm">
                                 Principale
@@ -753,6 +837,25 @@ export default function ProductFormModal({ isOpen, onClose, product, onSuccess }
         </div>
         
       </div>
+
+      <ImageCropModal
+        isOpen={!!cropTarget}
+        imageUrl={cropTarget?.url ?? null}
+        caption={cropTarget ? `Couleur : ${cropTarget.colorKey}` : undefined}
+        onClose={() => setCropTarget(null)}
+        onConfirm={async (blob) => {
+          if (!cropTarget) return;
+          try {
+            await applyCroppedImage(cropTarget.colorKey, cropTarget.index, blob);
+            showToast('Image recadrée enregistrée.', 'success');
+            setCropTarget(null);
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            showToast(`Recadrage impossible : ${msg}`, 'error');
+            throw err;
+          }
+        }}
+      />
     </div>
   );
 }

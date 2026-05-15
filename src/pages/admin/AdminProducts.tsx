@@ -655,6 +655,9 @@ export default function AdminProducts() {
                       <ArrowUpDown size={14} />
                     </button>
                   </th>
+                  <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-[0.1em] text-neutral-500 max-w-[14rem]">
+                    Description
+                  </th>
                   <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-[0.1em] text-neutral-500">Catégorie</th>
                   <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-[0.1em] text-neutral-500">Genre</th>
                   <th className="px-5 py-4 text-[11px] font-semibold uppercase tracking-[0.1em] text-neutral-500">
@@ -686,6 +689,7 @@ export default function AdminProducts() {
                       <td className="px-5 py-4"><div className="w-4 h-4 bg-neutral-200 rounded"></div></td>
                       <td className="px-5 py-4"><div className="w-10 h-10 bg-neutral-200 rounded-md"></div></td>
                       <td className="px-5 py-4"><div className="h-4 bg-neutral-200 rounded w-3/4"></div></td>
+                      <td className="px-5 py-4"><div className="h-4 bg-neutral-200 rounded w-full max-w-[10rem]"></div></td>
                       <td className="px-5 py-4"><div className="h-4 bg-neutral-200 rounded w-1/2"></div></td>
                       <td className="px-5 py-4"><div className="h-4 bg-neutral-200 rounded w-1/2"></div></td>
                       <td className="px-5 py-4"><div className="h-4 bg-neutral-200 rounded w-1/2"></div></td>
@@ -696,7 +700,7 @@ export default function AdminProducts() {
                   ))
                 ) : products.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-5 py-16 text-center text-neutral-500">
+                    <td colSpan={10} className="px-5 py-16 text-center text-neutral-500">
                       <PackageSearchIcon className="mx-auto h-12 w-12 text-neutral-300 mb-3" />
                       <p>Aucun produit trouvé avec ces critères.</p>
                     </td>
@@ -706,6 +710,7 @@ export default function AdminProducts() {
                     const firstImage = product.images?.[0];
                     const isActive = product.is_active !== false;
                     const isSelected = selectedIds.includes(product.id);
+                    const descPreview = product.description?.trim() ?? '';
 
                     return (
                       <tr
@@ -736,6 +741,18 @@ export default function AdminProducts() {
                               <span className="text-[10px] uppercase tracking-wider font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-sm w-fit mt-1">Promo Active</span>
                             )}
                           </div>
+                        </td>
+                        <td className={`px-5 ${rowPaddingClass} max-w-[14rem]`}>
+                          {descPreview ? (
+                            <p
+                              className="line-clamp-2 text-xs text-neutral-600 leading-snug"
+                              title={descPreview}
+                            >
+                              {descPreview}
+                            </p>
+                          ) : (
+                            <span className="text-xs text-neutral-400">—</span>
+                          )}
                         </td>
                         <td className={`px-5 ${rowPaddingClass} text-neutral-600 capitalize`}>{product.category}</td>
                         <td className={`px-5 ${rowPaddingClass} text-neutral-600 capitalize`}>{product.gender || '-'}</td>
@@ -856,6 +873,14 @@ export default function AdminProducts() {
                   <p className="text-lg font-bold tracking-tight text-neutral-900 mt-1">
                     {formatCurrencyAmount(Number(product.price), { maximumFractionDigits: 0 })}
                   </p>
+                  {product.description?.trim() ? (
+                    <p
+                      className="mt-2 line-clamp-2 text-xs leading-relaxed text-neutral-600"
+                      title={product.description.trim()}
+                    >
+                      {product.description.trim()}
+                    </p>
+                  ) : null}
 
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-700 capitalize">

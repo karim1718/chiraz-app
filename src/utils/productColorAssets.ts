@@ -30,23 +30,72 @@ export function normalizeProductColorMedia(
   return out;
 }
 
-/** URLs pour une couleur : color_media / imagesByColor puis fallback products.images */
+/** Libellé couleur pour comparaison (trim + espaces internes). */
+export function normalizeColorLabelKey(label: string | undefined | null): string {
+  if (!label || typeof label !== 'string') return '';
+  return label.trim().replace(/\s+/g, ' ');
+}
+
+/** True si au moins une entrée color_media / imagesByColor contient des URLs. */
+export function productHasPerColorGalleries(product: Product): boolean {
+  const merged = mergeColorMediaMaps(product);
+  return Object.values(merged).some((urls) => urls.length > 0);
+}
+
+function mergeColorMediaMaps(product: Product): Record<string, string[]> {
+  return normalizeProductColorMedia({
+    ...(product.imagesByColor as Record<string, unknown> | undefined),
+    ...(product.color_media as Record<string, unknown> | undefined),
+  });
+}
+
+/**
+ * Résout les URLs pour un libellé : clé exacte puis équivalence (casse / accents / espaces).
+ */
+export function findUrlsForColorInMediaMap(
+  media: Record<string, string[]>,
+  colorLabel: string
+): string[] {
+  const target = normalizeColorLabelKey(colorLabel);
+  if (!target) return [];
+
+  if (media[target]?.length) return [...media[target]];
+
+  for (const [storedKey, urls] of Object.entries(media)) {
+    if (!urls?.length) continue;
+    const sk = normalizeColorLabelKey(storedKey);
+    if (sk === target) return [...urls];
+  }
+
+  for (const [storedKey, urls] of Object.entries(media)) {
+    if (!urls?.length) continue;
+    const sk = normalizeColorLabelKey(storedKey);
+    if (sk.localeCompare(target, 'fr', { sensitivity: 'base' }) === 0) return [...urls];
+  }
+
+  return [];
+}
+
+/**
+ * URLs pour une couleur : uniquement la galerie liée à ce libellé.
+ * Fallback sur products.images seulement si aucune galerie par couleur n’existe (produits legacy).
+ */
 export function getImagesForColor(
   product: Product,
   colorLabel: string | undefined | null
 ): string[] {
-  const key = colorLabel?.trim();
-  const fallback = product.images?.length ? product.images : [];
+  const key = normalizeColorLabelKey(colorLabel);
+  const legacy = product.images?.length ? product.images : [];
 
-  if (!key) return [...fallback];
+  if (!key) return [...legacy];
 
-  const byDerived = product.imagesByColor?.[key];
-  if (byDerived && byDerived.length > 0) return [...byDerived];
+  const media = mergeColorMediaMaps(product);
+  const urls = findUrlsForColorInMediaMap(media, key);
+  if (urls.length > 0) return urls;
 
-  const raw = normalizeProductColorMedia(product.color_media as Record<string, unknown>)[key];
-  if (raw && raw.length > 0) return [...raw];
+  if (!productHasPerColorGalleries(product)) return [...legacy];
 
-  return [...fallback];
+  return [];
 }
 
 /** Première image affichable pour une couleur (carte catalogue, stock admin). */
@@ -119,4 +168,30 @@ export function deriveLegacyProductImages(
     .filter((u): u is string => Boolean(u));
   if (merged.length > 0) return [...new Set(merged)];
   return fallback.slice();
+}
+
+/**
+ * Objet Product minimal depuis une jointure admin (variants → products)
+ * pour `getPrimaryImageForColor` / `getImagesForColor`.
+ */
+export function adminJoinProductStub(productsRow: {
+  id: string;
+  name?: string | null;
+  price?: number | null;
+  images?: string[] | null;
+  color_media?: Record<string, unknown> | null;
+}): Product {
+  const cm = normalizeProductColorMedia(productsRow.color_media ?? undefined);
+  return {
+    id: productsRow.id,
+    name: productsRow.name || '',
+    price: Number(productsRow.price ?? 0),
+    category: '',
+    images: productsRow.images || [],
+    colors: [],
+    sizes: [],
+    material: '',
+    color_media: cm,
+    imagesByColor: { ...cm },
+  };
 }

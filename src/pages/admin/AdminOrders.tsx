@@ -73,7 +73,7 @@ export default function AdminOrders() {
             quantity, price,
             variants (
               size, color,
-              products ( name, images )
+              products ( id, name, images, color_media )
             )
           )
         `,

@@ -12,15 +12,13 @@ export default function CollectionsSection() {
         {
           id: 'chaussures' as const,
           titleKey: 'collections.colShoes',
-          image:
-            'https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?auto=format&fit=crop&w=1200&q=80',
+          image: '/shoe.jpeg',
           to: '/shop?category=chaussures',
         },
         {
           id: 'sandales' as const,
           titleKey: 'collections.colSandals',
-          image:
-            'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=1200&q=80',
+          image: '/sandale.jpeg',
           to: '/shop?category=sandales',
         },
       ] as const,
