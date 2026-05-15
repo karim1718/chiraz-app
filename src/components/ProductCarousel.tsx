@@ -20,7 +20,7 @@ function formatProductPrice(product: Product, t: (key: string, opts?: Record<str
 }
 
 const IMAGE_BOX_CLASS =
-  'relative w-[280px] h-[280px] max-w-full aspect-square shrink-0 overflow-hidden rounded-lg bg-[#e4e1d5] flex items-center justify-center p-4 sm:p-5';
+  'relative w-[280px] h-[280px] max-w-full aspect-square shrink-0 overflow-hidden rounded-xl bg-[#f8f8f8] shadow-sm group-hover:shadow-md transition-shadow duration-300 flex items-center justify-center p-4 sm:p-5';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -56,7 +56,7 @@ function FeaturedProductCard({ product }: { product: Product }) {
               loading="lazy"
               width={280}
               height={280}
-              className="max-h-full max-w-full object-contain object-center mix-blend-multiply transition-transform duration-500 group-hover:scale-[1.03]"
+              className="max-h-full max-w-full object-contain object-center transition-transform duration-500 group-hover:scale-[1.03]"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.style.display = 'none';

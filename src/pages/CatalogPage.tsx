@@ -133,13 +133,11 @@ function ProductCard({
       className="group relative"
     >
       <Link to={`/product/${product.id}`} className="block">
-        <div className="h-48 sm:aspect-[4/3] sm:h-auto bg-[#E4E1D5]/10 rounded-sm overflow-hidden relative">
-          {/* Placeholder image area with mix-blend-multiply */}
-          <div className="absolute inset-0 bg-[#E4E1D5]/10" />
+        <div className="relative aspect-square bg-[#f8f8f8] rounded-xl overflow-hidden shadow-sm group-hover:shadow-md transition-shadow duration-300">
           <motion.div
-            className="absolute inset-0 flex items-center justify-center overflow-hidden"
-            whileHover={{ scale: 1.1, rotate: 2 }}
-            transition={{ duration: 0.4 }}
+            className="absolute inset-0 flex items-center justify-center overflow-hidden p-4 sm:p-5"
+            whileHover={{ scale: 1.05 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
             style={{ touchAction: 'manipulation' }}
           >
             {getPrimaryImageForColor(product, product.colors[0]) ? (
@@ -147,19 +145,19 @@ function ProductCard({
                 <img
                   src={getPrimaryImageForColor(product, product.colors[0])}
                   alt={product.name}
-                  className="w-full h-full object-cover mix-blend-multiply"
+                  className="w-full h-full object-contain object-center"
                   onError={(e) => {
                     const t = e.target as HTMLImageElement;
                     t.style.display = 'none';
                     t.nextElementSibling?.classList.remove('hidden');
                   }}
                 />
-                <span className="font-serif text-[#E4E1D5]/40 text-lg hidden absolute">
+                <span className="font-serif text-[#0a0a0a]/40 text-lg hidden absolute">
                   {product.name}
                 </span>
               </>
             ) : (
-              <span className="font-serif text-[#E4E1D5]/40 text-lg">
+              <span className="font-serif text-[#0a0a0a]/40 text-lg">
                 {product.name}
               </span>
             )}
@@ -317,15 +315,15 @@ function QuickViewModal({
             <X size={20} />
           </button>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="aspect-[4/3] bg-[#1a1a1a] rounded overflow-hidden">
+            <div className="aspect-square bg-[#f8f8f8] rounded-xl overflow-hidden p-4 flex items-center justify-center">
               {getPrimaryImageForColor(product, selectedColor) ? (
                 <img
                   src={getPrimaryImageForColor(product, selectedColor)}
                   alt={product.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain object-center"
                 />
               ) : (
-                <span className="flex items-center justify-center h-full text-[#E4E1D5]/40 font-serif">
+                <span className="flex items-center justify-center h-full text-[#0a0a0a]/40 font-serif">
                   {product.name}
                 </span>
               )}
