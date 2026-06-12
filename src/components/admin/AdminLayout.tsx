@@ -12,6 +12,7 @@ import {
   Users,
   Store,
   BarChart3,
+  ClipboardList,
   LogOut,
   Menu,
   X,
@@ -33,6 +34,7 @@ export default function AdminLayout() {
   const [lowStockCount, setLowStockCount] = useState(0);
   const [exhaustedCount, setExhaustedCount] = useState(0);
   const [newOrdersCount, setNewOrdersCount] = useState(0);
+  const [draftLeadsCount, setDraftLeadsCount] = useState(0);
   const [financialAlertsCount, setFinancialAlertsCount] = useState(0);
 
   const fetchCounts = useCallback(async () => {
@@ -44,23 +46,24 @@ export default function AdminLayout() {
 
       if (count !== null) setNewOrdersCount(count);
 
-      const { data } = await supabase
-        .from("variants")
-        .select("stock, low_stock_alert");
+      const { count: draftLeads } = await supabase
+        .from('order_leads')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'draft');
+      setDraftLeadsCount(draftLeads ?? 0);
 
-      if (data) {
-        const threshold = (v: { low_stock_alert: number | null }) =>
-          v.low_stock_alert ?? 3;
+      const { count: exhausted } = await supabase
+        .from('variants')
+        .select('*', { count: 'exact', head: true })
+        .eq('stock', 0);
+      setExhaustedCount(exhausted ?? 0);
 
-        const exhausted = data.filter((v) => v.stock === 0).length;
-
-        const lowAlert = data.filter(
-          (v) => v.stock > 0 && v.stock <= threshold(v)
-        ).length;
-
-        setExhaustedCount(exhausted);
-        setLowStockCount(lowAlert);
-      }
+      const { count: lowAlert } = await supabase
+        .from('variants')
+        .select('*', { count: 'exact', head: true })
+        .gt('stock', 0)
+        .lte('stock', 3);
+      setLowStockCount(lowAlert ?? 0);
 
       const { count: overduePayments } = await supabase
         .from("payments")
@@ -110,6 +113,40 @@ export default function AdminLayout() {
     };
   }, [fetchCounts]);
 
+  useEffect(() => {
+    const channel: RealtimeChannel = supabase
+      .channel('admin-leads-counts')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'order_leads' },
+        () => {
+          void fetchCounts();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [fetchCounts]);
+
+  useEffect(() => {
+    const channel: RealtimeChannel = supabase
+      .channel('admin-variants-counts')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'variants' },
+        () => {
+          void fetchCounts();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [fetchCounts]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/admin/login");
@@ -136,6 +173,13 @@ export default function AdminLayout() {
       label: "Commandes",
       badge: newOrdersCount,
       pulseBadge: true,
+    },
+    {
+      to: "/admin/leads",
+      icon: ClipboardList,
+      label: "Prospects",
+      badge: draftLeadsCount,
+      badgeTone: draftLeadsCount > 0 ? "warning" : undefined,
     },
     { to: "/admin/direct-sales", icon: Store, label: "Vente directe" },
     {

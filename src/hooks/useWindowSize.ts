@@ -1,20 +1,46 @@
-import { useState, useEffect } from 'react';
+import { create } from 'zustand';
+
+interface WindowSizeState {
+  width: number;
+  height: number;
+  isMobile: boolean;
+  isTablet: boolean;
+  isDesktop: boolean;
+}
+
+function computeState(width: number, height: number): WindowSizeState {
+  return {
+    width,
+    height,
+    isMobile: width < 640,
+    isTablet: width >= 640 && width < 1024,
+    isDesktop: width >= 1024,
+  };
+}
+
+const initialWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
+const initialHeight = typeof window !== 'undefined' ? window.innerHeight : 768;
+
+export const useWindowSizeStore = create<WindowSizeState>(() =>
+  computeState(initialWidth, initialHeight),
+);
+
+let listenerAttached = false;
+
+function attachResizeListener() {
+  if (listenerAttached || typeof window === 'undefined') return;
+  listenerAttached = true;
+  window.addEventListener('resize', () => {
+    useWindowSizeStore.setState(computeState(window.innerWidth, window.innerHeight));
+  });
+}
 
 export function useWindowSize() {
-  const [size, setSize] = useState({
-    width: typeof window !== 'undefined' ? window.innerWidth : 1024,
-    height: typeof window !== 'undefined' ? window.innerHeight : 768,
-  });
+  attachResizeListener();
+  return useWindowSizeStore();
+}
 
-  useEffect(() => {
-    const handler = () => setSize({ width: window.innerWidth, height: window.innerHeight });
-    window.addEventListener('resize', handler);
-    return () => window.removeEventListener('resize', handler);
-  }, []);
-
-  const isMobile = size.width < 640;
-  const isTablet = size.width >= 640 && size.width < 1024;
-  const isDesktop = size.width >= 1024;
-
-  return { ...size, isMobile, isTablet, isDesktop };
+export function useIsMobile() {
+  attachResizeListener();
+  return useWindowSizeStore((s) => s.isMobile);
 }

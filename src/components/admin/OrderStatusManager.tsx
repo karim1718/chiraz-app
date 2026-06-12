@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { updateOrderStatus } from '../../services/orderService';
-import { openWhatsApp } from '../../services/notificationService';
+import {
+  getOrderWhatsAppUrl,
+  openWhatsApp,
+  orderHasWhatsAppablePhone,
+} from '../../services/notificationService';
 import { Check, X as XIcon, Package, Truck, RefreshCcw, Loader2, Info } from 'lucide-react';
 import type { Order } from '../../types/order';
 
@@ -32,12 +36,23 @@ export default function OrderStatusManager({
 
   const handleUpdate = async (newStatus: string, reason?: string, actionName?: string, waStatus?: string) => {
     setLoadingAction(actionName || newStatus);
+    /** Onglet réservé au clic (avant await) pour contourner le blocage des popups. */
+    const waTab =
+      waStatus && orderHasWhatsAppablePhone(order) ? window.open('about:blank', '_blank') : null;
     try {
       const result = await updateOrderStatus(order.id, newStatus, reason);
-      
+
       if (waStatus) {
-        // Passer l'ordre mis à jour pour que les raisons soient incluses dans le message
-        openWhatsApp({ ...order, ...result.order }, waStatus);
+        const merged = { ...order, ...result.order };
+        const url = getOrderWhatsAppUrl(merged, waStatus);
+        if (url && waTab) {
+          waTab.location.href = url;
+        } else {
+          waTab?.close();
+          if (url) openWhatsApp(merged, waStatus);
+        }
+      } else {
+        waTab?.close();
       }
 
       await notifyParent();
@@ -46,6 +61,7 @@ export default function OrderStatusManager({
       setCustomReason('');
       setTrackingNumber('');
     } catch (error: any) {
+      waTab?.close();
       alert(error.message);
     } finally {
       setLoadingAction(null);
@@ -55,20 +71,29 @@ export default function OrderStatusManager({
   const handleShip = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoadingAction('expédié');
+    const waTab = orderHasWhatsAppablePhone(order) ? window.open('about:blank', '_blank') : null;
     try {
       if (trackingNumber.trim()) {
         await supabase.from('orders').update({ tracking_number: trackingNumber.trim() }).eq('id', order.id);
       }
       await updateOrderStatus(order.id, 'expédié');
-      openWhatsApp(
-        { ...order, tracking_number: trackingNumber.trim() || order.tracking_number },
-        'expédié',
-        { tracking: trackingNumber.trim() || undefined }
-      );
+      const merged = {
+        ...order,
+        tracking_number: trackingNumber.trim() || order.tracking_number,
+      };
+      const tracking = trackingNumber.trim() || undefined;
+      const url = getOrderWhatsAppUrl(merged, 'expédié', { tracking });
+      if (url && waTab) {
+        waTab.location.href = url;
+      } else {
+        waTab?.close();
+        if (url) openWhatsApp(merged, 'expédié', { tracking });
+      }
       await notifyParent();
       setActiveModal(null);
       setTrackingNumber('');
     } catch (error: any) {
+      waTab?.close();
       alert(error.message);
     } finally {
       setLoadingAction(null);

@@ -2,31 +2,24 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { AlertCircle, CheckCircle2, Info } from 'lucide-react';
 import {
   createContext,
-  useCallback,
   useContext,
-  useEffect,
   useMemo,
-  useRef,
-  useState,
   type ReactNode,
 } from 'react';
+import {
+  dismissToast,
+  showToast,
+  useToastList,
+  type ToastContextValue,
+  type ToastItem,
+  type ToastVariant,
+} from './toastStore';
 
-export type ToastVariant = 'success' | 'error' | 'info';
-
-interface ToastItem {
-  id: string;
-  variant: ToastVariant;
-  message: string;
-}
-
-export interface ToastContextValue {
-  showToast: (message: string, variant?: ToastVariant) => void;
-  dismissToast: (id: string) => void;
-}
+export type { ToastVariant, ToastContextValue };
+export { showToast, dismissToast };
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
-const AUTO_DISMISS_MS = 4200;
 const motionTransition = { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const };
 
 function toastVariantStyles(variant: ToastVariant): {
@@ -112,63 +105,36 @@ function ToastView({
   );
 }
 
+function ToastContainer() {
+  const toasts = useToastList();
+
+  return (
+    <div
+      className="pointer-events-none fixed top-6 right-6 z-[200] flex max-w-md flex-col items-end gap-3 sm:right-8"
+      aria-live="polite"
+      aria-relevant="additions text"
+    >
+      <AnimatePresence mode="popLayout">
+        {toasts.map((toast) => (
+          <ToastView key={toast.id} toast={toast} onDismiss={dismissToast} />
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+const toastActions: ToastContextValue = {
+  showToast,
+  dismissToast,
+};
+
 export default function ToastProvider({ children }: { children: ReactNode }) {
-  const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const timersRef = useRef<Map<string, number>>(new Map());
-
-  const dismissToast = useCallback((id: string) => {
-    const existing = timersRef.current.get(id);
-    if (existing !== undefined) {
-      window.clearTimeout(existing);
-      timersRef.current.delete(id);
-    }
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  }, []);
-
-  const showToast = useCallback(
-    (message: string, variant: ToastVariant = 'info') => {
-      const id =
-        typeof crypto !== 'undefined' && 'randomUUID' in crypto
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-      setToasts((prev) => [{ id, variant, message }, ...prev]);
-      const timer = window.setTimeout(() => {
-        dismissToast(id);
-      }, AUTO_DISMISS_MS);
-      timersRef.current.set(id, timer);
-    },
-    [dismissToast],
-  );
-
-  useEffect(() => {
-    return () => {
-      for (const id of timersRef.current.keys()) {
-        const t = timersRef.current.get(id);
-        if (t !== undefined) window.clearTimeout(t);
-      }
-      timersRef.current.clear();
-    };
-  }, []);
-
-  const value = useMemo(
-    () => ({ showToast, dismissToast }),
-    [showToast, dismissToast],
-  );
+  const value = useMemo(() => toastActions, []);
 
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div
-        className="pointer-events-none fixed top-6 right-6 z-[200] flex max-w-md flex-col items-end gap-3 sm:right-8"
-        aria-live="polite"
-        aria-relevant="additions text"
-      >
-        <AnimatePresence mode="popLayout">
-          {toasts.map((toast) => (
-            <ToastView key={toast.id} toast={toast} onDismiss={dismissToast} />
-          ))}
-        </AnimatePresence>
-      </div>
+      <ToastContainer />
     </ToastContext.Provider>
   );
 }

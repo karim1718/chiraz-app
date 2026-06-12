@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AlertCircle,
@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { formatCurrencyAmount } from '../../lib/vocab';
-import OrderDetailModal from '../../components/admin/OrderDetailModal';
+const OrderDetailModal = lazy(() => import('../../components/admin/OrderDetailModal'));
 import StockUpdateModal from '../../components/admin/StockUpdateModal';
 import type { Order } from '../../types/order';
 import { logisticsThemeFor } from '../../utils/logisticsTheme';
@@ -878,12 +878,14 @@ export default function AdminDashboard() {
         </section>
       </div>
 
-      <OrderDetailModal
-        isOpen={Boolean(selectedOrder)}
-        onClose={() => setSelectedOrder(null)}
-        order={selectedOrder}
-        onStatusChange={() => void fetchDashboard()}
-      />
+      <Suspense fallback={null}>
+        <OrderDetailModal
+          isOpen={Boolean(selectedOrder)}
+          onClose={() => setSelectedOrder(null)}
+          order={selectedOrder}
+          onStatusChange={() => void fetchDashboard()}
+        />
+      </Suspense>
 
       <StockUpdateModal
         isOpen={Boolean(stockModalVariant)}

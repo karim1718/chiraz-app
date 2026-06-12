@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { supabase } from '../../lib/supabase';
 import { CURRENCY } from '../../lib/vocab';
 import { X, Upload, Plus, Trash2, Loader2, Crop } from 'lucide-react';
-import ImageCropModal from './ImageCropModal';
+const ImageCropModal = lazy(() => import('./ImageCropModal'));
 import type { Product } from '../../types/product';
 import type { Variant } from '../../types/variant';
 import {
@@ -838,24 +838,26 @@ export default function ProductFormModal({ isOpen, onClose, product, onSuccess }
         
       </div>
 
-      <ImageCropModal
-        isOpen={!!cropTarget}
-        imageUrl={cropTarget?.url ?? null}
-        caption={cropTarget ? `Couleur : ${cropTarget.colorKey}` : undefined}
-        onClose={() => setCropTarget(null)}
-        onConfirm={async (blob) => {
-          if (!cropTarget) return;
-          try {
-            await applyCroppedImage(cropTarget.colorKey, cropTarget.index, blob);
-            showToast('Image recadrée enregistrée.', 'success');
-            setCropTarget(null);
-          } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            showToast(`Recadrage impossible : ${msg}`, 'error');
-            throw err;
-          }
-        }}
-      />
+      <Suspense fallback={null}>
+        <ImageCropModal
+          isOpen={!!cropTarget}
+          imageUrl={cropTarget?.url ?? null}
+          caption={cropTarget ? `Couleur : ${cropTarget.colorKey}` : undefined}
+          onClose={() => setCropTarget(null)}
+          onConfirm={async (blob) => {
+            if (!cropTarget) return;
+            try {
+              await applyCroppedImage(cropTarget.colorKey, cropTarget.index, blob);
+              showToast('Image recadrée enregistrée.', 'success');
+              setCropTarget(null);
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : String(err);
+              showToast(`Recadrage impossible : ${msg}`, 'error');
+              throw err;
+            }
+          }}
+        />
+      </Suspense>
     </div>
   );
 }

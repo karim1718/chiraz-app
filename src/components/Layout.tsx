@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -7,20 +7,16 @@ import Footer from './Footer';
 import SearchOverlay from './SearchOverlay';
 import WhatsAppFloating from './WhatsAppFloating';
 import BottomNavBar from './layout/BottomNavBar';
-import { useWindowSize } from '../hooks';
+import SeoHead from './SeoHead';
+import { useIsMobile } from '../hooks';
 
-export default function Layout() {
+function useRouteSeo() {
   const location = useLocation();
-  const { isMobile } = useWindowSize();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [location.pathname]);
-
-  useEffect(() => {
-    const base = t('meta.defaultTitle');
+  return useMemo(() => {
     const path = location.pathname;
+    const base = t('meta.defaultTitle');
     let title = base;
     let description: string | undefined;
 
@@ -55,36 +51,50 @@ export default function Layout() {
       title = t('meta.privacy.title');
       description = t('meta.privacy.description');
     } else if (path.startsWith('/product/')) {
-      title = t('meta.product.title');
-      description = t('meta.product.description');
+      return null;
     }
 
-    document.title = title;
-    const descEl = document.querySelector('meta[name="description"]');
-    if (descEl && description) descEl.setAttribute('content', description);
-  }, [location.pathname, i18n.language, t]);
+    return { title, description, path };
+  }, [location.pathname, t]);
+}
+
+export default function Layout() {
+  const location = useLocation();
+  const isMobile = useIsMobile();
+  const { t } = useTranslation();
+  const routeSeo = useRouteSeo();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
 
   const duration = isMobile ? 0.15 : 0.2;
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-[#E4E1D5] font-sans selection:bg-[#E4E1D5] selection:text-black">
+      {routeSeo ? (
+        <SeoHead
+          title={routeSeo.title}
+          description={routeSeo.description}
+          path={routeSeo.path}
+        />
+      ) : null}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:rounded focus:bg-[#E4E1D5] focus:px-4 focus:py-2 focus:text-black"
+      >
+        {t('common.skipToContent', { defaultValue: 'Aller au contenu' })}
+      </a>
       <Header />
-      <main className="pb-14 md:pb-0">
+      <main id="main-content" className="pb-14 md:pb-0">
         <AnimatePresence mode="wait">
           <motion.div
-            key={location.pathname}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration, ease: 'easeOut' }}
           >
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: isMobile ? 0.15 : 0.3, delay: 0.05 }}
-            >
-              <Outlet />
-            </motion.div>
+            <Outlet />
           </motion.div>
         </AnimatePresence>
       </main>

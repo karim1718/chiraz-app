@@ -7,6 +7,11 @@ interface LazyImageProps {
   className?: string;
   placeholderColor?: string;
   loading?: 'lazy' | 'eager';
+  width?: number;
+  height?: number;
+  srcSet?: string;
+  sizes?: string;
+  priority?: boolean;
 }
 
 export default function LazyImage({
@@ -15,8 +20,14 @@ export default function LazyImage({
   className = '',
   placeholderColor = '#1a1a1a',
   loading = 'lazy',
+  width,
+  height,
+  srcSet,
+  sizes,
+  priority = false,
 }: LazyImageProps) {
   const [loaded, setLoaded] = useState(false);
+  const loadingAttr = priority ? 'eager' : loading;
 
   return (
     <span className={`relative block overflow-hidden ${className}`}>
@@ -30,7 +41,13 @@ export default function LazyImage({
       <motion.img
         src={src}
         alt={alt}
-        loading={loading}
+        width={width}
+        height={height}
+        srcSet={srcSet}
+        sizes={sizes}
+        loading={loadingAttr}
+        decoding="async"
+        fetchPriority={priority ? 'high' : undefined}
         onLoad={() => setLoaded(true)}
         initial={{ opacity: 0 }}
         animate={{ opacity: loaded ? 1 : 0 }}

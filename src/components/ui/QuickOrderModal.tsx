@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, Truck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +8,12 @@ import type { Product } from '../../types/product';
 import { getPrimaryImageForColor } from '../../utils/productColorAssets';
 import { useWindowSize, useBodyScrollLock } from '../../hooks';
 import { createOrder, StockError } from '../../services/orderService';
+import {
+  createLeadSessionKey,
+  hasMeaningfulLeadData,
+  markOrderLeadConverted,
+  upsertOrderLead,
+} from '../../services/orderLeadService';
 import { formatCurrencyAmount } from '../../lib/vocab';
 import { fetchShopShippingSettings } from '../../lib/shopShippingSettings';
 import { shopWhatsAppUrl } from '../../lib/shopContact';
@@ -24,11 +30,19 @@ export default function QuickOrderModal({ isOpen, onClose, product, selectedSize
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isMobile } = useWindowSize();
-  const { fullName, phone, city, setFullName, setPhone, setCity } = useQuickOrderStore();
+  const fullName = useQuickOrderStore((s) => s.fullName);
+  const phone = useQuickOrderStore((s) => s.phone);
+  const city = useQuickOrderStore((s) => s.city);
+  const setFullName = useQuickOrderStore((s) => s.setFullName);
+  const setPhone = useQuickOrderStore((s) => s.setPhone);
+  const setCity = useQuickOrderStore((s) => s.setCity);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [shippingEnabled, setShippingEnabled] = useState(true);
   const [deliveryFeeInput, setDeliveryFeeInput] = useState('0');
+  const sessionKeyRef = useRef<string>('');
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flushAutosaveRef = useRef<((force?: boolean) => Promise<void>) | null>(null);
 
   useBodyScrollLock(isOpen);
 
@@ -62,6 +76,87 @@ export default function QuickOrderModal({ isOpen, onClose, product, selectedSize
     total: grandTotal,
   };
 
+  const leadPayload = useMemo(() => {
+    if (!product) return null;
+    return {
+      fullName,
+      phone,
+      city,
+      productId: product.id,
+      productName: product.name,
+      selectedSize,
+      selectedColor: selectedColor ?? null,
+      quantity,
+      unitPrice,
+      deliveryCost: parsedDelivery,
+      total: grandTotal,
+    };
+  }, [
+    product,
+    fullName,
+    phone,
+    city,
+    selectedSize,
+    selectedColor,
+    quantity,
+    unitPrice,
+    parsedDelivery,
+    grandTotal,
+  ]);
+
+  const flushAutosave = useCallback(
+    async (force = false) => {
+      if (!sessionKeyRef.current) return;
+      if (!force && !isOpen) return;
+      if (!leadPayload || !hasMeaningfulLeadData(leadPayload)) return;
+      await upsertOrderLead(sessionKeyRef.current, leadPayload);
+    },
+    [isOpen, leadPayload],
+  );
+
+  flushAutosaveRef.current = flushAutosave;
+
+  /** Nouvelle session à chaque ouverture du modal → un nouveau prospect dans l’admin. */
+  useEffect(() => {
+    if (!isOpen || !product) return;
+    sessionKeyRef.current = createLeadSessionKey();
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
+      void flushAutosaveRef.current?.(true);
+    };
+  }, [isOpen, product?.id]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
+      return;
+    }
+
+    if (!leadPayload || !hasMeaningfulLeadData(leadPayload)) {
+      return;
+    }
+
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+    }
+    autosaveTimerRef.current = setTimeout(() => {
+      void flushAutosave();
+    }, 2000);
+
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
+    };
+  }, [isOpen, leadPayload, flushAutosave]);
+
   const orderThumb = product
     ? getPrimaryImageForColor(product, selectedColor || product.colors[0]) ?? ''
     : '';
@@ -89,6 +184,8 @@ export default function QuickOrderModal({ isOpen, onClose, product, selectedSize
         quantity,
         deliveryCost: shippingEnabled ? parsedDelivery : 0,
       });
+
+      await markOrderLeadConverted(sessionKeyRef.current, orderId);
 
       setIsLoading(false);
       onClose();

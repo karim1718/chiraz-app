@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
+import { useMemo, useState, useCallback, useEffect, useRef, lazy, Suspense, memo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -15,7 +15,7 @@ import {
 import BottomSheet from '../components/ui/BottomSheet';
 import { useSearchStore } from '../store/searchStore';
 import SizeChips from '../components/ui/SizeChips';
-import QuickOrderModal from '../components/ui/QuickOrderModal';
+const QuickOrderModal = lazy(() => import('../components/ui/QuickOrderModal'));
 import { CURRENCY, formatCurrencyAmount } from '../lib/vocab';
 import { useProductStock } from '../hooks/useProductStock';
 import i18n from '../i18n';
@@ -110,7 +110,7 @@ function applyFiltersAndSort(
 }
 
 // --- Product card with hover, badges, heart, quick view ---
-function ProductCard({
+const ProductCard = memo(function ProductCard({
   product,
   index,
   onQuickView,
@@ -145,6 +145,8 @@ function ProductCard({
                 <img
                   src={getPrimaryImageForColor(product, product.colors[0])}
                   alt={product.name}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-contain object-center"
                   onError={(e) => {
                     const t = e.target as HTMLImageElement;
@@ -246,7 +248,7 @@ function ProductCard({
       </Link>
     </motion.article>
   );
-}
+});
 
 // --- Quick view modal ---
 function QuickViewModal({
@@ -267,7 +269,7 @@ function QuickViewModal({
   const [isQuickOrderOpen, setIsQuickOrderOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   
-  const { variants } = useProductStock(product.id);
+  const { variants, isOutOfStock, isLoading: stockLoading } = useProductStock(product.id);
 
   const handleMainAction = () => {
     setIsAdding(true);
@@ -383,6 +385,8 @@ function QuickViewModal({
                   sizes={product.sizes}
                   selectedSize={selectedSize}
                   onSelect={setSelectedSize}
+                  isOutOfStock={isOutOfStock}
+                  stockLoading={stockLoading}
                 />
               </div>
 
@@ -417,13 +421,15 @@ function QuickViewModal({
         </div>
       </motion.div>
 
-      <QuickOrderModal
-        isOpen={isQuickOrderOpen}
-        onClose={() => setIsQuickOrderOpen(false)}
-        product={product}
-        selectedSize={selectedSize}
-        selectedColor={selectedColor}
-      />
+      <Suspense fallback={null}>
+        <QuickOrderModal
+          isOpen={isQuickOrderOpen}
+          onClose={() => setIsQuickOrderOpen(false)}
+          product={product}
+          selectedSize={selectedSize}
+          selectedColor={selectedColor}
+        />
+      </Suspense>
     </motion.div>
   );
 }
@@ -675,9 +681,24 @@ function countActiveFilters(f: FilterState): number {
   return n;
 }
 
+function CatalogGridSkeleton() {
+  return (
+    <div className="grid grid-cols-2 max-[380px]:grid-cols-1 gap-3 sm:gap-6 lg:grid-cols-3 md:gap-8" aria-hidden>
+      {Array.from({ length: 6 }, (_, i) => (
+        <div key={i} className="flex flex-col gap-3">
+          <div className="aspect-square rounded-xl bg-white/5 animate-pulse" />
+          <div className="h-4 w-3/4 rounded bg-white/5 animate-pulse" />
+          <div className="h-3 w-1/3 rounded bg-white/5 animate-pulse" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function CatalogPage() {
   const { t, i18n } = useTranslation();
-  const { products, isLoading: storeLoading } = useProductStore();
+  const products = useProductStore((s) => s.products);
+  const storeLoading = useProductStore((s) => s.isLoading);
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
   const [sort, setSort] = useState<SortOption>('new');
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
@@ -834,6 +855,9 @@ export default function CatalogPage() {
             </p>
           </div>
 
+          {storeLoading && products.length === 0 ? (
+            <CatalogGridSkeleton />
+          ) : (
           <AnimatePresence mode="popLayout">
             <div className="grid grid-cols-2 max-[380px]:grid-cols-1 gap-3 sm:gap-6 lg:grid-cols-3 md:gap-8">
               {displayed.map((product, i) => (
@@ -846,6 +870,7 @@ export default function CatalogPage() {
               ))}
             </div>
           </AnimatePresence>
+          )}
 
           {/* Infinite scroll sentinel + loader + end message */}
           <div ref={observerRef} className="h-4" />

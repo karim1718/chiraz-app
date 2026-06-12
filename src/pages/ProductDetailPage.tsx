@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo, lazy, Suspense } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -26,10 +26,11 @@ import {
 } from '../utils/productColorAssets';
 import { useWindowSize } from '../hooks';
 import SizeChips, { ALL_SIZES } from '../components/ui/SizeChips';
-import QuickOrderModal from '../components/ui/QuickOrderModal';
+const QuickOrderModal = lazy(() => import('../components/ui/QuickOrderModal'));
 import { formatCurrencyAmount } from '../lib/vocab';
 import { useProductStock } from '../hooks/useProductStock';
 import { shopWhatsAppUrl } from '../lib/shopContact';
+import SeoHead from '../components/SeoHead';
 
 const STAR_RATING = 4.5;
 
@@ -725,10 +726,12 @@ function SimilarCarousel({ products, isMobile }: { products: Product[]; isMobile
 export default function ProductDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
-  const { getProductById, getSimilarProducts, isLoading: storeLoading } = useProductStore();
+  const getProductById = useProductStore((s) => s.getProductById);
+  const getSimilarProducts = useProductStore((s) => s.getSimilarProducts);
+  const storeLoading = useProductStore((s) => s.isLoading);
   const product = id ? getProductById(id) : undefined;
   const { isMobile } = useWindowSize();
-  const { variants } = useProductStock(product?.id || '');
+  const { variants, isOutOfStock, isLoading: stockLoading } = useProductStock(product?.id || '');
 
   const [selectedColor, setSelectedColor] = useState<string>(() => product?.colors[0] ?? '');
   const [selectedSize, setSelectedSize] = useState<number | null>(null);
@@ -840,6 +843,15 @@ export default function ProductDetailPage() {
       transition={{ duration: 0.5 }}
       className="pt-28 pb-24 px-4 md:px-6 lg:px-8"
     >
+      <SeoHead
+        title={`${product.name} — Chiraz`}
+        description={
+          product.description?.slice(0, 160) || t('meta.product.description')
+        }
+        image={getPrimaryImageForColor(product, selectedColor) || product.images[0]}
+        path={`/product/${product.id}`}
+        type="product"
+      />
       <div className="max-w-7xl mx-auto">
         <Link
           to="/shop"
@@ -1018,6 +1030,8 @@ export default function ProductDetailPage() {
                   sizes={ALL_SIZES}
                   selectedSize={selectedSize}
                   onSelect={setSelectedSize}
+                  isOutOfStock={isOutOfStock}
+                  stockLoading={stockLoading}
                 />
               </motion.div>
 
@@ -1184,13 +1198,15 @@ export default function ProductDetailPage() {
         )}
       </AnimatePresence>
 
-      <QuickOrderModal
-        isOpen={isQuickOrderOpen}
-        onClose={() => setQuickOrderOpen(false)}
-        product={product}
-        selectedSize={selectedSize}
-        selectedColor={selectedColor}
-      />
+      <Suspense fallback={null}>
+        <QuickOrderModal
+          isOpen={isQuickOrderOpen}
+          onClose={() => setQuickOrderOpen(false)}
+          product={product}
+          selectedSize={selectedSize}
+          selectedColor={selectedColor}
+        />
+      </Suspense>
     </motion.div>
   );
 }

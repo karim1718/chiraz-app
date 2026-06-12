@@ -80,7 +80,7 @@ export default function SearchOverlay() {
     reset,
   } = useSearchStore();
 
-  const { products } = useProductStore();
+  const products = useProductStore((s) => s.products);
 
   const debouncedQuery = useDebounce(query, 300);
 
@@ -90,9 +90,10 @@ export default function SearchOverlay() {
   }, [isOpen]);
 
   useEffect(() => {
+    if (!isOpen) return;
     const list = searchProducts(debouncedQuery, products);
     setResults(list);
-  }, [debouncedQuery, setResults, products]);
+  }, [debouncedQuery, setResults, products, isOpen]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -198,6 +199,8 @@ export default function SearchOverlay() {
                               <img
                                 src={thumb}
                                 alt=""
+                                loading="lazy"
+                                decoding="async"
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               />
                             ) : (
@@ -262,6 +265,8 @@ export default function SearchOverlay() {
                             <img
                               src={thumb}
                               alt=""
+                              loading="lazy"
+                              decoding="async"
                               className="w-full h-full object-cover"
                             />
                           ) : (

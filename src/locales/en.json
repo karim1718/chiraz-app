@@ -308,7 +308,10 @@
     "waLineName": "Name",
     "waLineTel": "Tel",
     "waLineCity": "City",
-    "waIntro": "Hello, I would like to order the following item:"
+    "waIntro": "Hello, I would like to order the following item:",
+    "autosavePending": "Saving draft…",
+    "autosaveSaved": "Draft saved",
+    "autosaveError": "Could not save draft"
   },
   "search": {
     "placeholder": "Search for a shoe...",

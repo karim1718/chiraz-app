@@ -308,7 +308,10 @@
     "waLineName": "الاسم",
     "waLineTel": "الهاتف",
     "waLineCity": "المدينة",
-    "waIntro": "مرحبًا، أرغب في طلب المنتج التالي:"
+    "waIntro": "مرحبًا، أرغب في طلب المنتج التالي:",
+    "autosavePending": "جاري الحفظ…",
+    "autosaveSaved": "تم حفظ المسودة",
+    "autosaveError": "تعذر حفظ المسودة"
   },
   "search": {
     "placeholder": "ابحث عن حذاء...",

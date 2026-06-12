@@ -308,7 +308,10 @@
     "waLineName": "Nom",
     "waLineTel": "Tel",
     "waLineCity": "Ville",
-    "waIntro": "Bonjour, je souhaite commander l'article suivant :"
+    "waIntro": "Bonjour, je souhaite commander l'article suivant :",
+    "autosavePending": "Enregistrement en cours…",
+    "autosaveSaved": "Brouillon enregistré",
+    "autosaveError": "Impossible d'enregistrer le brouillon"
   },
   "search": {
     "placeholder": "Rechercher une chaussure...",

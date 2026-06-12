@@ -63,6 +63,17 @@ export async function createOrder(data: OrderData): Promise<string> {
     return rpcOrderId as string;
   }
 
+  if (rpcError) {
+    throw new Error(rpcError.message || 'Impossible de créer la commande.');
+  }
+
+  // --- Fallback legacy (admin session uniquement) ---
+  const { data: sessionData } = await supabase.auth.getSession();
+  const isAdmin = sessionData.session?.user?.app_metadata?.role === 'admin';
+  if (!isAdmin) {
+    throw new Error('Impossible de créer la commande. Réessayez plus tard.');
+  }
+
   // --- ÉTAPE 1 : VÉRIFICATION DU STOCK ---
   let query = supabase
     .from('variants')
@@ -228,8 +239,8 @@ function mapChirazUpdateOrderStatusRpcError(raw: string | undefined, code?: stri
   if (m.includes('INVALID_ARGS')) {
     return 'Paramètres de mise à jour invalides.';
   }
-  if ((raw || '').includes('JWT')) {
-    return "Session expirée. Reconnectez-vous à l'admin.";
+  if ((raw || '').includes('JWT') || m.includes('UNAUTHORIZED')) {
+    return "Session expirée ou accès refusé. Reconnectez-vous à l'admin.";
   }
   return (
     raw ||

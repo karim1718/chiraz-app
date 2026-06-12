@@ -1,9 +1,8 @@
 import { motion } from 'framer-motion';
+import type { IsOutOfStockFn } from '../../hooks/useProductStock';
+import { useProductStock } from '../../hooks/useProductStock';
 
 export const ALL_SIZES = [36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46];
-
-
-import { useProductStock } from '../../hooks/useProductStock';
 
 interface SizeChipsProps {
   productId: string;
@@ -11,6 +10,9 @@ interface SizeChipsProps {
   sizes: number[];
   selectedSize: number | null;
   onSelect: (size: number) => void;
+  /** When provided, skips internal stock fetch (avoids duplicate API calls). */
+  isOutOfStock?: IsOutOfStockFn;
+  stockLoading?: boolean;
 }
 
 export default function SizeChips({
@@ -19,8 +21,12 @@ export default function SizeChips({
   sizes,
   selectedSize,
   onSelect,
+  isOutOfStock: isOutOfStockProp,
+  stockLoading: stockLoadingProp,
 }: SizeChipsProps) {
-  const { isOutOfStock, isLoading } = useProductStock(productId);
+  const internal = useProductStock(isOutOfStockProp ? '' : productId);
+  const isOutOfStock = isOutOfStockProp ?? internal.isOutOfStock;
+  const isLoading = stockLoadingProp ?? internal.isLoading;
 
   return (
     <div className={`flex flex-wrap gap-2 ${isLoading ? 'opacity-70 transition-opacity' : ''}`}>

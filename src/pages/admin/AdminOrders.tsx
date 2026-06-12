@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { supabase } from '../../lib/supabase';
 import { formatCurrencyAmount } from '../../lib/vocab';
 import { Search, Loader2, Eye, Calendar, X } from 'lucide-react';
-import OrderDetailModal from '../../components/admin/OrderDetailModal';
+const OrderDetailModal = lazy(() => import('../../components/admin/OrderDetailModal'));
 import type { Order } from '../../types/order';
 import useDebounce from '../../components/admin/ui/useDebounce';
 import { logisticsThemeFor } from '../../utils/logisticsTheme';
@@ -18,6 +18,17 @@ const LOGISTICS_STATUS_KEYS = [
   'refusé',
   'retourné',
 ] as const;
+
+const ORDER_SELECT = `
+  *,
+  order_items (
+    quantity, price,
+    variants (
+      size, color,
+      products ( id, name, images, color_media )
+    )
+  )
+`;
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -44,7 +55,14 @@ export default function AdminOrders() {
         (payload) => {
           const newOrder = payload.new as Order;
           setNewOrderIds((prev) => new Set(prev).add(newOrder.id));
-          fetchOrders();
+          void fetchOrderById(newOrder.id).then((order) => {
+            if (order) {
+              setOrders((prev) => {
+                if (prev.some((o) => o.id === order.id)) return prev;
+                return [order, ...prev];
+              });
+            }
+          });
           setTimeout(() => {
             setNewOrderIds((prev) => {
               const next = new Set(prev);
@@ -61,23 +79,22 @@ export default function AdminOrders() {
     };
   }, []);
 
+  const fetchOrderById = async (orderId: string): Promise<Order | null> => {
+    const { data, error } = await supabase
+      .from('orders')
+      .select(ORDER_SELECT)
+      .eq('id', orderId)
+      .maybeSingle();
+    if (error || !data) return null;
+    return data as Order;
+  };
+
   const fetchOrders = async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('orders')
-        .select(
-          `
-          *,
-          order_items (
-            quantity, price,
-            variants (
-              size, color,
-              products ( id, name, images, color_media )
-            )
-          )
-        `,
-        )
+        .select(ORDER_SELECT)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -499,12 +516,14 @@ export default function AdminOrders() {
         </section>
       </div>
 
-      <OrderDetailModal
-        isOpen={Boolean(selectedOrder)}
-        onClose={() => setSelectedOrder(null)}
-        order={selectedOrder}
-        onStatusChange={fetchOrders}
-      />
+      <Suspense fallback={null}>
+        <OrderDetailModal
+          isOpen={Boolean(selectedOrder)}
+          onClose={() => setSelectedOrder(null)}
+          order={selectedOrder}
+          onStatusChange={fetchOrders}
+        />
+      </Suspense>
     </div>
   );
 }

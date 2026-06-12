@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { supabase } from '../lib/supabase';
 
 export interface Variant {
@@ -12,80 +12,150 @@ export interface Variant {
   original_price?: number;
 }
 
-export function useProductStock(productId: string) {
-  const [variants, setVariants] = useState<Variant[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+interface ProductStockEntry {
+  variants: Variant[];
+  isLoading: boolean;
+  refCount: number;
+}
 
-  useEffect(() => {
-    if (!productId) {
-       setIsLoading(false);
-       return;
-    }
+const entries = new Map<string, ProductStockEntry>();
+const listeners = new Set<() => void>();
+const channels = new Map<string, ReturnType<typeof supabase.channel>>();
 
-    const fetchStock = async () => {
-      setIsLoading(true);
-      const { data, error } = await supabase
-        .from('variants')
-        .select('*')
-        .eq('product_id', productId);
-      
-      if (!error && data) {
-        setVariants(data as Variant[]);
-      } else {
-        console.error('Erreur récupération stock Supabase:', error);
-      }
-      setIsLoading(false);
-    };
+function emit() {
+  for (const listener of listeners) {
+    listener();
+  }
+}
 
-    fetchStock();
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
 
-    // Abonnement Temps Réel (Supabase Realtime)
-    const channelId = `public:variants:${productId}:${Math.random().toString(36).substring(2, 9)}`;
-    const channel = supabase
-      .channel(channelId)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'variants',
-          filter: `product_id=eq.${productId}`,
-        },
-        (payload) => {
-          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
-            const newVariant = payload.new as Variant;
-            setVariants((prev) => {
-              const exists = prev.find(v => v.id === newVariant.id);
-              if (exists) {
-                return prev.map(v => v.id === newVariant.id ? newVariant : v);
-              }
-              return [...prev, newVariant];
-            });
-          } else if (payload.eventType === 'DELETE') {
-             const oldVariant = payload.old as { id: string };
-             setVariants((prev) => prev.filter(v => v.id !== oldVariant.id));
-          }
+function getEntry(productId: string): ProductStockEntry {
+  if (!entries.has(productId)) {
+    entries.set(productId, { variants: [], isLoading: true, refCount: 0 });
+  }
+  return entries.get(productId)!;
+}
+
+async function loadVariants(productId: string) {
+  const entry = getEntry(productId);
+  if (!entry.isLoading && entry.variants.length > 0) return;
+
+  entry.isLoading = true;
+  emit();
+
+  const { data, error } = await supabase
+    .from('variants')
+    .select('*')
+    .eq('product_id', productId);
+
+  if (!error && data) {
+    entry.variants = data as Variant[];
+  } else if (error) {
+    console.error('Erreur récupération stock Supabase:', error);
+  }
+
+  entry.isLoading = false;
+  emit();
+}
+
+function ensureRealtime(productId: string) {
+  if (channels.has(productId)) return;
+
+  const channel = supabase
+    .channel(`stock:${productId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'variants',
+        filter: `product_id=eq.${productId}`,
+      },
+      (payload) => {
+        const entry = getEntry(productId);
+        if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+          const newVariant = payload.new as Variant;
+          const exists = entry.variants.find((v) => v.id === newVariant.id);
+          entry.variants = exists
+            ? entry.variants.map((v) => (v.id === newVariant.id ? newVariant : v))
+            : [...entry.variants, newVariant];
+        } else if (payload.eventType === 'DELETE') {
+          const oldVariant = payload.old as { id: string };
+          entry.variants = entry.variants.filter((v) => v.id !== oldVariant.id);
         }
-      )
-      .subscribe();
+        emit();
+      },
+    )
+    .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+  channels.set(productId, channel);
+}
+
+function releaseRealtime(productId: string) {
+  const channel = channels.get(productId);
+  if (channel) {
+    void supabase.removeChannel(channel);
+    channels.delete(productId);
+  }
+}
+
+function acquire(productId: string) {
+  const entry = getEntry(productId);
+  entry.refCount += 1;
+  void loadVariants(productId);
+  ensureRealtime(productId);
+}
+
+function release(productId: string) {
+  const entry = entries.get(productId);
+  if (!entry) return;
+  entry.refCount -= 1;
+  if (entry.refCount <= 0) {
+    entries.delete(productId);
+    releaseRealtime(productId);
+  }
+}
+
+function useStockSnapshot(productId: string) {
+  return useSyncExternalStore(
+    subscribe,
+    () => {
+      if (!productId) return { variants: [] as Variant[], isLoading: false };
+      const entry = entries.get(productId);
+      return {
+        variants: entry?.variants ?? [],
+        isLoading: entry?.isLoading ?? true,
+      };
+    },
+    () => ({ variants: [] as Variant[], isLoading: false }),
+  );
+}
+
+export function useProductStock(productId: string) {
+  useEffect(() => {
+    if (!productId) return;
+    acquire(productId);
+    return () => release(productId);
   }, [productId]);
 
-  const isOutOfStock = useCallback((size: number, color?: string) => {
-    // Sécurité: Si la BDD est encore vide/non migrée, tout est en stock par défaut pour la démo
-    if (variants.length === 0) return false;
-    
-    // Recherche de la variante spécifique
-    const variant = variants.find(
-      (v) => v.size === size && (!color || v.color === color)
-    );
-    
-    // Épuisé si la variante n'existe pas ou que le stock est <= 0
-    return !variant || variant.stock <= 0;
-  }, [variants]);
+  const { variants, isLoading } = useStockSnapshot(productId);
+
+  const isOutOfStock = useCallback(
+    (size: number, color?: string) => {
+      if (variants.length === 0) return false;
+      const variant = variants.find(
+        (v) => v.size === size && (!color || v.color === color),
+      );
+      return !variant || variant.stock <= 0;
+    },
+    [variants],
+  );
 
   return { variants, isLoading, isOutOfStock };
 }
+
+export type IsOutOfStockFn = (size: number, color?: string) => boolean;

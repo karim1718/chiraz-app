@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -35,7 +35,7 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: 'easeOut' as const } },
 };
 
-function FeaturedProductCard({ product }: { product: Product }) {
+const FeaturedProductCard = memo(function FeaturedProductCard({ product }: { product: Product }) {
   const { t } = useTranslation();
   const primaryColor = product.colors[0];
   const imageUrl = primaryColor
@@ -87,7 +87,7 @@ function FeaturedProductCard({ product }: { product: Product }) {
       </Link>
     </motion.article>
   );
-}
+});
 
 function FeaturedGridSkeleton() {
   const { t } = useTranslation();

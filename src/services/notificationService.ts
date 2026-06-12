@@ -127,17 +127,18 @@ function buildNewOrderBoutiqueMessage(order: Order): string {
 }
 
 /**
- * Ouvre WhatsApp avec un message pré-rempli selon le statut de la commande.
+ * URL wa.me pour pré-remplir un message client (statut commande).
+ * Utile après un `await` : ouvrir `about:blank` au clic puis assigner `location.href` à cette URL
+ * pour éviter le blocage des popups par le navigateur.
  */
-export function openWhatsApp(
+export function getOrderWhatsAppUrl(
   order: Order,
   status: string,
   extra?: { tracking?: string },
-): void {
+): string | null {
   const phone = formatWhatsAppDigits(order.phone);
   if (!phone) {
-    console.warn("Impossible d'ouvrir WhatsApp : numéro de téléphone invalide.");
-    return;
+    return null;
   }
 
   let message = '';
@@ -156,11 +157,34 @@ export function openWhatsApp(
       message = buildRefusedMessage(order);
       break;
     default:
-      console.warn(`Aucun template WhatsApp pour le statut "${status}".`);
-      return;
+      return null;
   }
 
-  const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+}
+
+export function orderHasWhatsAppablePhone(order: Order): boolean {
+  return Boolean(formatWhatsAppDigits(order.phone));
+}
+
+/**
+ * Ouvre WhatsApp avec un message pré-rempli selon le statut de la commande.
+ * Préférer `getOrderWhatsAppUrl` + onglet ouvert au clic si l’ouverture suit un `await`.
+ */
+export function openWhatsApp(
+  order: Order,
+  status: string,
+  extra?: { tracking?: string },
+): void {
+  const url = getOrderWhatsAppUrl(order, status, extra);
+  if (!url) {
+    if (!formatWhatsAppDigits(order.phone)) {
+      console.warn("Impossible d'ouvrir WhatsApp : numéro de téléphone invalide.");
+    } else {
+      console.warn(`Aucun template WhatsApp pour le statut "${status}".`);
+    }
+    return;
+  }
   window.open(url, '_blank');
 }
 
