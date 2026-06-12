@@ -4,32 +4,25 @@ import { useProductStock } from '../../hooks/useProductStock';
 
 export const ALL_SIZES = [36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46];
 
-interface SizeChipsProps {
-  productId: string;
+interface SizeChipsBaseProps {
   selectedColor?: string;
   sizes: number[];
   selectedSize: number | null;
   onSelect: (size: number) => void;
-  /** When provided, skips internal stock fetch (avoids duplicate API calls). */
-  isOutOfStock?: IsOutOfStockFn;
-  stockLoading?: boolean;
+  isOutOfStock: IsOutOfStockFn;
+  stockLoading: boolean;
 }
 
-export default function SizeChips({
-  productId,
+function SizeChipsBase({
   selectedColor,
   sizes,
   selectedSize,
   onSelect,
-  isOutOfStock: isOutOfStockProp,
-  stockLoading: stockLoadingProp,
-}: SizeChipsProps) {
-  const internal = useProductStock(isOutOfStockProp ? '' : productId);
-  const isOutOfStock = isOutOfStockProp ?? internal.isOutOfStock;
-  const isLoading = stockLoadingProp ?? internal.isLoading;
-
+  isOutOfStock,
+  stockLoading,
+}: SizeChipsBaseProps) {
   return (
-    <div className={`flex flex-wrap gap-2 ${isLoading ? 'opacity-70 transition-opacity' : ''}`}>
+    <div className={`flex flex-wrap gap-2 ${stockLoading ? 'opacity-70 transition-opacity' : ''}`}>
       {sizes.map((size) => {
         const isStockEmpty = isOutOfStock(size, selectedColor);
         const isSelected = selectedSize === size;
@@ -65,4 +58,48 @@ export default function SizeChips({
       })}
     </div>
   );
+}
+
+function SizeChipsWithStock({
+  productId,
+  ...rest
+}: Omit<SizeChipsProps, 'isOutOfStock' | 'stockLoading'>) {
+  const { isOutOfStock, isLoading } = useProductStock(productId);
+  return (
+    <SizeChipsBase
+      {...rest}
+      isOutOfStock={isOutOfStock}
+      stockLoading={isLoading}
+    />
+  );
+}
+
+interface SizeChipsProps {
+  productId: string;
+  selectedColor?: string;
+  sizes: number[];
+  selectedSize: number | null;
+  onSelect: (size: number) => void;
+  /** When provided, skips internal stock fetch (avoids duplicate API calls). */
+  isOutOfStock?: IsOutOfStockFn;
+  stockLoading?: boolean;
+}
+
+export default function SizeChips({
+  isOutOfStock: isOutOfStockProp,
+  stockLoading: stockLoadingProp,
+  productId,
+  ...rest
+}: SizeChipsProps) {
+  if (isOutOfStockProp) {
+    return (
+      <SizeChipsBase
+        {...rest}
+        isOutOfStock={isOutOfStockProp}
+        stockLoading={stockLoadingProp ?? false}
+      />
+    );
+  }
+
+  return <SizeChipsWithStock productId={productId} {...rest} />;
 }

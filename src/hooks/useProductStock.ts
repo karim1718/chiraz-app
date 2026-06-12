@@ -12,11 +12,19 @@ export interface Variant {
   original_price?: number;
 }
 
+interface StockSnapshot {
+  variants: Variant[];
+  isLoading: boolean;
+}
+
 interface ProductStockEntry {
   variants: Variant[];
   isLoading: boolean;
   refCount: number;
 }
+
+const EMPTY_SNAPSHOT: StockSnapshot = { variants: [], isLoading: false };
+const snapshotCache = new Map<string, StockSnapshot>();
 
 const entries = new Map<string, ProductStockEntry>();
 const listeners = new Set<() => void>();
@@ -31,6 +39,23 @@ function emit() {
 function subscribe(listener: () => void) {
   listeners.add(listener);
   return () => listeners.delete(listener);
+}
+
+function getStockSnapshot(productId: string): StockSnapshot {
+  if (!productId) return EMPTY_SNAPSHOT;
+
+  const entry = entries.get(productId);
+  const variants = entry?.variants ?? [];
+  const isLoading = entry?.isLoading ?? true;
+
+  const cached = snapshotCache.get(productId);
+  if (cached && cached.variants === variants && cached.isLoading === isLoading) {
+    return cached;
+  }
+
+  const snapshot: StockSnapshot = { variants, isLoading };
+  snapshotCache.set(productId, snapshot);
+  return snapshot;
 }
 
 function getEntry(productId: string): ProductStockEntry {
@@ -116,6 +141,7 @@ function release(productId: string) {
   entry.refCount -= 1;
   if (entry.refCount <= 0) {
     entries.delete(productId);
+    snapshotCache.delete(productId);
     releaseRealtime(productId);
   }
 }
@@ -123,15 +149,8 @@ function release(productId: string) {
 function useStockSnapshot(productId: string) {
   return useSyncExternalStore(
     subscribe,
-    () => {
-      if (!productId) return { variants: [] as Variant[], isLoading: false };
-      const entry = entries.get(productId);
-      return {
-        variants: entry?.variants ?? [],
-        isLoading: entry?.isLoading ?? true,
-      };
-    },
-    () => ({ variants: [] as Variant[], isLoading: false }),
+    () => getStockSnapshot(productId),
+    () => EMPTY_SNAPSHOT,
   );
 }
 
